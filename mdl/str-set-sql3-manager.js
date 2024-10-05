@@ -101,19 +101,49 @@ function addStr(uCode, str, dsg, type, memo0, memo1, memo2, callback) {
 exports.addStr = addStr
 
 function getLineSetList(callback) {
-  getStrSetList('line', callback)
+  const info = {
+    params: ['line'],
+    where: 'type = ?'
+  }
+  getStrSetList(info, callback)
 }
 exports.getLineSetList = getLineSetList
 
 function getLinePointSetList(callback) {
-  getStrSetList('line-point', callback)
+  const info = {
+    params: ['line-point'],
+    where: 'type = ?'
+  }
+  getStrSetList(info, callback)
 }
 exports.getLinePointSetList = getLinePointSetList
 
-function getStrSetList(type, callback) {
+function getColoringAndLinePoint(callback) {
+  const coloringInfo = {
+    params: ['coloring', 'line-point'],
+    where: 'type = ? AND memo0 = ?'
+  }
+  getStrSetList(coloringInfo, (result) => {
+    if (result.code === 'list') {
+      getLinePointSetList((rst) => {
+        if (rst.code === 'list') {
+          callback({ code: 'list', pointList: rst.list, colorList: result.list })
+        } else {
+          callback(rst)
+        }
+      })
+    } else {
+      callback(result)
+    }
+  })
+
+}
+exports.getColoringAndLinePoint = getColoringAndLinePoint
+
+function getStrSetList(info, callback) {
   const db = openDb()
-  const sql = `SELECT str strSet FROM strs WHERE type = ?`
-  db.all(sql, [type], (err, rows) => {
+  const sql = `SELECT str strSet FROM strs WHERE ${info.where}`
+  db.all(sql, info.params, (err, rows) => {
     if (err) {
       if (callback) callback({ code: 'error', msg: err.message })
       return

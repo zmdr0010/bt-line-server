@@ -45,4 +45,10 @@ router.get('/line-point-set-list', (req, res) => {
   })
 })
 
+router.get('/coloring-line-point-set-list', (req, res) => {
+  strSetManager.getColoringAndLinePoint((result) => {
+    res.send(JSON.stringify(result))
+  })
+})
+
 exports.router = router
