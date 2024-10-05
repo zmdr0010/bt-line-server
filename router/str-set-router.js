@@ -39,4 +39,10 @@ router.get('/line-set-list', (req, res) => {
   })
 })
 
+router.get('/line-point-set-list', (req, res) => {
+  strSetManager.getLinePointSetList((result) => {
+    res.send(JSON.stringify(result))
+  })
+})
+
 exports.router = router

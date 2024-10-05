@@ -101,9 +101,19 @@ function addStr(uCode, str, dsg, type, memo0, memo1, memo2, callback) {
 exports.addStr = addStr
 
 function getLineSetList(callback) {
+  getStrSetList('line', callback)
+}
+exports.getLineSetList = getLineSetList
+
+function getLinePointSetList(callback) {
+  getStrSetList('line-point', callback)
+}
+exports.getLinePointSetList = getLinePointSetList
+
+function getStrSetList(type, callback) {
   const db = openDb()
   const sql = `SELECT str strSet FROM strs WHERE type = ?`
-  db.all(sql, ['line'], (err, rows) => {
+  db.all(sql, [type], (err, rows) => {
     if (err) {
       if (callback) callback({ code: 'error', msg: err.message })
       return
@@ -117,4 +127,3 @@ function getLineSetList(callback) {
 
   db.close()
 }
-exports.getLineSetList = getLineSetList
