@@ -260,6 +260,9 @@ function createSimpleLineFromLinePointSet(set) {
     child: [],
     pointInfo: {
       list: pList
+    },
+    origin: { // linePoint uCode
+      uCode: uCode
     }
   }
   calculateLineInfoSize(lineInfo)

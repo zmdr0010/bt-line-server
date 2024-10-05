@@ -84,6 +84,7 @@
       const container = document.getElementById('id-container')
       for (const colorSet of colorSetList) {
         const cSplit = colorSet.split('/')
+        const cUCode = cSplit[0]
         const lineUCode = cSplit[1]
         const shpSet = linePointSetList.find(s => s.split('/')[0] === lineUCode)
         const shp = createSimpleLineFromLinePointSet(shpSet)
@@ -103,7 +104,7 @@
         const div = document.createElement('div')
         div.appendChild(canvas)
         const label = document.createElement('label')
-        label.innerText = shp.uCode
+        label.innerText = cUCode
         div.appendChild(label)
         container.appendChild(div)
 
