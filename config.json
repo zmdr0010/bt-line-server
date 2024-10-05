@@ -1,0 +1,5 @@
+{
+  "port": 3336,
+  "dbName": "strset000.db",
+  "dbPath": "./db"
+}
