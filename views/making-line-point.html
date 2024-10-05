@@ -33,6 +33,7 @@
     <button style="margin: 4px" onclick="print()">print</button>
     <button style="margin: 4px" onclick="save()">save to file</button>
     <button style="margin: 4px" onclick="saveToServer()">save to server</button>
+    <label id="id-label-post-result">post result</label>
   </div>
   <div style="margin: 8px"><canvas id="id-canvas"></canvas></div>
 
@@ -367,6 +368,71 @@
       // saveString(resultInfo.uCode, lineSet)
       // saveString(colorInfo.lineUCode, linePointSet)
       // saveString(colorInfo.uCode, colorSet)
+
+      //// making-line-point / coloring-line-point
+      ////    line-point, coloring(1, black) (memo0: line-point -> line (memo0: line-point,line-point uCode) <- record origin
+      //// line coloring
+      ////    line-coloring (memo0: line,line uCode)
+
+      // POST /str-set/add-str
+      // const uCode = req.body.ucode
+      // const str = req.body.str
+      // const dsg = req.body.dsg
+      // const type = req.body.type
+      // const memo0 = req.body.memo0
+      // const memo1 = req.body.memo1
+      // const memo2 = req.body.memo2
+      const linePoint = {
+        ucode: colorInfo.lineUCode,
+        str: linePointSet,
+        type: 'line-point',
+        dsg: '',
+        memo0: '',
+        memo1: '',
+        memo2: '',
+      }
+      const color = {
+        ucode: colorInfo.uCode,
+        str: colorSet,
+        type: 'coloring',
+        dsg: '',
+        memo0: 'line-point',
+        memo1: '',
+        memo2: '',
+      }
+      const line = {
+        ucode: resultInfo.uCode,
+        str: lineSet,
+        type: 'line',
+        dsg: '',
+        memo0: `line-point,${colorInfo.lineUCode}`,
+        memo1: '',
+        memo2: '',
+      }
+      const label = document.getElementById('id-label-post-result')
+      label.innerText = 'post: '
+      console.log(linePoint)
+      console.log(color)
+      console.log(line)
+
+      postStrSet(JSON.stringify(linePoint), label)
+      postStrSet(JSON.stringify(color), label)
+      postStrSet(JSON.stringify(line), label)
+    }
+
+    function postStrSet(obj, label) {
+      console.log(obj)
+      const request = new Request('/str-set/add-str', {
+        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', body: obj
+      })
+      fetch(request).then(response => {
+        return response.json()
+      }).then(result => {
+        console.log(result)
+        const str = `${obj.type}: ${result.code}`
+        label.innerText = `${label.innerText}, ${str}`
+      })
     }
   </script>
 </body>

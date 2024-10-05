@@ -29,9 +29,7 @@ router.post('/add-str', (req, res) => {
   // res.send(`uCode: ${uCode}, str: ${str}, dsg: ${dsg}, type: ${type}, memo0: ${memo0}, memo1: ${memo1}, memo2: ${memo2}`)
   strSetManager.addStr(uCode, str, dsg, type, memo0, memo1, memo2, (result) => {
     console.log(result)
-    let code = result.code
-    if (code === 'error') code += `: ${result.msg}`
-    res.send(code)
+    res.send(JSON.stringify(result))
   })
 })
 

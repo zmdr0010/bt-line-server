@@ -9,7 +9,7 @@ let dbPath = ''
 //       coloring, coloring-rgb, place-line, palette, palette-rgb
 
 //// making-line-point / coloring-line-point
-////    line-point, coloring(1, black) -> line (memo0: line-point,line-point uCode) <- record origin
+////    line-point, coloring(1, black) (memo0: line-point) -> line (memo0: line-point,line-point uCode) <- record origin
 //// line coloring
 ////    line-coloring (memo0: line,line uCode)
 
