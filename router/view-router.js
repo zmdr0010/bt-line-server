@@ -30,4 +30,8 @@ router.get('/place-line', (req, res) => {
   res.render('place-line.html')
 })
 
+router.get('/place-line-list', (req, res) => {
+  res.render('place-line-list.html')
+})
+
 exports.router = router

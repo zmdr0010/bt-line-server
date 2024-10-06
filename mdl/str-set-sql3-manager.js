@@ -146,6 +146,15 @@ function getLinePointSetList(callback) {
 }
 exports.getLinePointSetList = getLinePointSetList
 
+function getPlaceLineSetList(callback) {
+  const info = {
+    params: ['place-line'],
+    where: 'type = ?'
+  }
+  getStrSetList(info, callback)
+}
+exports.getPlaceLineSetList = getPlaceLineSetList
+
 function getColoringAndLinePoint(callback) {
   const coloringInfo = {
     params: ['coloring', 'line-point'],

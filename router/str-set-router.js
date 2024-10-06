@@ -51,6 +51,12 @@ router.get('/coloring-line-point-set-list', (req, res) => {
   })
 })
 
+router.get('/place-line-set-list', (req, res) => {
+  strSetManager.getPlaceLineSetList((result) => {
+    res.send(JSON.stringify(result))
+  })
+})
+
 router.get('/line-set/:uCode', (req, res) => {
   const uCode = req.params.uCode
   console.log(uCode)
