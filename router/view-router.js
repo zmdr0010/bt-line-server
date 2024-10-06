@@ -18,6 +18,10 @@ router.get('/making-line-point', (req, res) => {
   res.render('making-line-point.html')
 })
 
+router.get('/making-line-point-v1', (req, res) => {
+  res.render('making-line-point-v1.html')
+})
+
 router.get('/line-point-list', (req, res) => {
   res.render('line-point-list.html')
 })

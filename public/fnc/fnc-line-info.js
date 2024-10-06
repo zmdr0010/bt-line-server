@@ -287,3 +287,35 @@ function createColorSet(colorInfo) {
   }
   return str
 }
+
+function createLinePointFromLineInfo(info) {
+  const pList = []
+  for (const shp of info.list) {
+    for (const p of shp.list) {
+      const pp = pList.find(pt => pt.x === p.x && pt.y === p.y)
+      if (!pp) pList.push({ i: pList.length, x: p.x, y: p.y })
+    }
+  }
+  const list = []
+  for (const shp of info.list) {
+    const pShp = { width: shp.width, color: shp.color, list: [] }
+    for (const p of shp.list) {
+      const pp = pList.find(pt => pt.x === p.x && pt.y === p.y)
+      pShp.list.push(pp)
+    }
+    list.push(pShp)
+  }
+  const linePoint = {
+    uCode: `line-${getCurrentDateUCode()}`,
+    w: info.w,
+    h: info.h,
+    x: info.x,
+    y: info.y,
+    pointInfo: {
+      list: pList
+    },
+    list: list,
+    child: []
+  }
+  return linePoint
+}
