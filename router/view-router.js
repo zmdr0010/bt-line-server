@@ -26,4 +26,8 @@ router.get('/coloring-line-point-list', (req, res) => {
   res.render('coloring-line-point-list.html')
 })
 
+router.get('/place-line', (req, res) => {
+  res.render('place-line.html')
+})
+
 exports.router = router

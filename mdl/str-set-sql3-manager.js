@@ -5,7 +5,7 @@ let dbPath = ''
 // strs table
 // str_id (key), ucode (text), str (text), dsg (text), type (text, line/line-point/color ...), memo0, memo1, memo2 (text)
 // dsg: designation (str split / -> index item designation)
-// type: line, line-coloring, line-coloring-rgb, line-point,
+// type: line, line-coloring, line-coloring-rgb, line-point, line-part(place merge + coloring)
 //       coloring, coloring-rgb, place-line, palette, palette-rgb
 
 //// making-line-point / coloring-line-point
@@ -175,7 +175,7 @@ function getLineStrSet(uCode, callback) {
   }
   getStrSet(info, callback)
 }
-exports.getLineSetList = getLineStrSet
+exports.getLineSet = getLineStrSet
 
 function getStrSetList(info, callback) {
   const db = openDb()
@@ -204,7 +204,7 @@ function getStrSet(info, callback) {
       return
     }
     if (!row) {
-      callback({ code: 'none', msg: 'have not str' })
+      if (callback) callback({ code: 'none', msg: 'have not str' })
       return
     }
     if (callback) callback({ code: 'str', str: row.strSet })

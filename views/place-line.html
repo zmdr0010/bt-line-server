@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>place line</title>
+</head>
+<body onload="init()">
+  <div style="margin: 8px"><h3 id="id-h3-ucode"></h3></div>
+  <div style="margin: 8px">
+    input lineSet uCode to add: <input id="id-input-shape-ucode" type="text" /> <button onclick="addShp()">add lineSet</button>
+    <button onclick="clearShapeUCode()">X</button>
+  </div>
+  <div style="margin: 8px">
+    <label id="id-label-current-shape-ucode">current lineSet uCode: </label>
+    x: <input id="id-input-x" value="0" type="number" onchange="changeXY()"/>
+    y: <input id="id-input-y" value="0" type="number" onchange="changeXY()"/>
+  </div>
+  <div style="margin: 8px">
+    move itvX: <input id="id-input-move-itv-x" value="10" type="number" onchange="changeMvItvXY()"/>
+    move itvY: <input id="id-input-move-itv-y" value="10" type="number" onchange="changeMvItvXY()"/>
+    start x: <input id="id-input-start-x" value="10" type="number" onchange="changeStartXY()"/>
+    start y: <input id="id-input-start-y" value="10" type="number" onchange="changeStartXY()"/>
+  </div>
+  <div style="margin: 8px">
+    scaleX: <input id="id-input-scale-x" value="1.0" type="number" />
+    scaleY: <input id="id-input-scale-y" value="1.0" type="number" />
+    <button onclick="changeScale()">change</button>
+  </div>
+  <div style="margin: 12px">
+    <button onclick="nextShp()">next shp</button>
+    <button onclick="prevShp()">prev shp</button>
+    <button onclick="frontShp()">front shp</button>
+    <button onclick="backShp()">back shp</button>
+    <button onclick="move(-1,0)">left</button>
+    <button onclick="move(1,0)">right</button>
+    <button onclick="move(0,-1)">top</button>
+    <button onclick="move(0,1)">bottom</button>
+    <button onclick="changeStyle()">change style</button>
+  </div>
+  <div style="margin: 12px">
+    <button onclick="removeShp()">remove</button>
+    <button onclick="print()">print</button>
+    <button onclick="save()">save</button>
+    <button onclick="saveToServer()">save to server</button>
+    <label id="id-label-result">result</label>
+  </div>
+  <div style="margin: 8px"><canvas id="id-canvas"></canvas></div>
+
+  <script type="text/javascript" src="fnc/fnc-draw.js"></script>
+  <script type="text/javascript" src="fnc/fnc-line-info.js"></script>
+  <script type="text/javascript" src="fnc/fnc-merge-line-info.js"></script>
+  <script type="text/javascript" src="fnc/fnc-save.js"></script>
+  <script type="text/javascript" src="fnc/fnc-shape-point.js"></script>
+  <script type="text/javascript" src="fnc/fnc-transform-line-info.js"></script>
+  <script>
+    let canvas
+    let ctx
+    let placeUCode = ''
+    let currentI = 0
+    let placeList = []
+    let mvItvX = 10
+    let mvItvY = 10
+    let sx = 200
+    let sy = 100
+    let styleWidth = 1
+
+    let keyLeft = 'b'//'z'//'ArrowLeft'
+    let keyRight = 'm'//'c'//'ArrowRight'
+    let keyUp = 'h'//'s'//'ArrowUp'
+    let keyDown = 'n'//'x'//'ArrowDown'
+    let keyPrint = 'p'
+    let keySave = 's'
+    let keyAddShape = 'a'
+    let keyChgStyle = '='
+    let keyRemoveShape = 'x'
+    let keyNextShape = ']'
+    let keyPrevShape = '['
+    let keyFrontShape = 't'
+    let keyBackShape = 'y'
+
+    let saveStrPlace
+    let saveStrMerge
+
+    function init() {
+      canvas = document.getElementById('id-canvas')
+      canvas.width = window.innerWidth - 16 - 16
+      canvas.height = window.innerHeight - 16 - 16
+      canvas.style.backgroundColor = 'ivory'
+      ctx = canvas.getContext('2d')
+
+      placeUCode = `place-line-${getCurrentDateUCode()}`
+      const h3 = document.getElementById('id-h3-ucode')
+      h3.innerText = placeUCode
+
+      const inputSX = document.getElementById('id-input-start-x')
+      const inputSY = document.getElementById('id-input-start-y')
+      inputSX.value = sx
+      inputSY.value = sy
+
+      document.addEventListener('keydown', onKeyDown)
+    }
+
+    function addShp() {
+      const input = document.getElementById('id-input-shape-ucode')
+      const uCode = input.value
+      if (uCode.length < 1) return
+      const request = new Request(`/str-set/line-set/${uCode}`)
+      fetch(request).then((response) => response.json()).then((json) => {
+        console.log(json)
+        if (json.code === 'str') {
+          const shpSet = json.str
+          const shp = createSimpleLineInfo(shpSet)
+          currentI = placeList.length
+          shp.x = 100
+          shp.y = 100
+          placeList.push({
+            shpSet: shpSet,
+            shp: shp,
+            origin: shp
+          })
+
+          changeCurrent()
+        }
+      })
+    }
+
+    function removeShp() {
+      placeList.splice(currentI, 1)
+      currentI = 0
+      changeCurrent()
+    }
+
+    function nextShp() {
+      currentI++
+      if (currentI >= placeList.length) currentI = 0
+      changeCurrent()
+    }
+
+    function prevShp() {
+      currentI--
+      if (currentI < 0) currentI = placeList.length - 1
+      changeCurrent()
+    }
+
+    function frontShp() {
+      let next = currentI + 1
+      if (next >= placeList.length) next = placeList.length - 1
+      if (currentI === next) return
+      const nextPlc = placeList[next]
+      const current = placeList[currentI]
+      placeList[currentI] = nextPlc
+      placeList[next] = current
+      currentI = next
+      draw()
+    }
+
+    function backShp() {
+      let prev = currentI - 1
+      if (prev < 0) prev = 0
+      if (currentI === prev) return
+      const prevPlc = placeList[prev]
+      const current = placeList[currentI]
+      placeList[prev] = current
+      placeList[currentI] = prevPlc
+      currentI = prev
+      draw()
+    }
+
+    function move(dx, dy) {
+      console.log(`move dx: ${dx}, dy: ${dy}`)
+      const current = placeList[currentI]
+      current.shp.x += dx * mvItvX
+      current.shp.y += dy * mvItvY
+      const inputX = document.getElementById('id-input-x')
+      const inputY = document.getElementById('id-input-y')
+      inputX.value = current.shp.x
+      inputY.value = current.shp.y
+      draw()
+    }
+
+    function changeCurrent() {
+      if (placeList.length < 1) {
+        draw()
+        return
+      }
+      const label = document.getElementById('id-label-current-shape-ucode')
+      const inputX = document.getElementById('id-input-x')
+      const inputY = document.getElementById('id-input-y')
+      const current = placeList[currentI]
+      inputX.value = current.shp.x
+      inputY.value = current.shp.y
+      label.innerText = current.shp.uCode
+
+      // for (const plc of placeList) {
+      //   let color = 'blue'
+      //   if (plc === current) color = 'red'
+      //   for (const dw of plc.shp.list) {
+      //     dw.color = color
+      //   }
+      // }
+
+      draw()
+    }
+
+    function changeMvItvXY() {
+      const inputMvItvX = document.getElementById('id-input-move-itv-x')
+      const inputMvItvY = document.getElementById('id-input-move-itv-y')
+      mvItvX = Number(inputMvItvX.value)
+      mvItvY = Number(inputMvItvY.value)
+    }
+
+    function changeXY() {
+      const inputX = document.getElementById('id-input-x')
+      const inputY = document.getElementById('id-input-y')
+      const current = placeList[currentI]
+      current.shp.x = Number(inputX.value)
+      current.shp.y = Number(inputY.value)
+      draw()
+    }
+
+    function changeStartXY() {
+      const inputSX = document.getElementById('id-input-start-x')
+      const inputSY = document.getElementById('id-input-start-y')
+      sx = Number(inputSX.value)
+      sy = Number(inputSY.value)
+      draw()
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+      ctx.strokeStyle = 'gray'
+      ctx.strokeRect(sx, sy, 500, 500)
+
+      for (const plc of placeList) {
+        drawLineInfo(ctx, plc.shp, sx, sy)
+      }
+
+      const current = placeList[currentI]
+      ctx.strokeStyle = 'blue'
+      ctx.strokeRect(sx + current.shp.x, sy + current.shp.y, current.shp.w, current.shp.h)
+    }
+
+    function onKeyDown(e) {
+      if (e.key === keyAddShape) addShp()
+      if (e.key === keyRemoveShape) removeShp()
+      if (e.key === keyNextShape) nextShp()
+      if (e.key === keyPrevShape) prevShp()
+      if (e.key === keyLeft) move(-1, 0)
+      if (e.key === keyRight) move(1, 0)
+      if (e.key === keyUp) move(0, -1)
+      if (e.key === keyDown) move(0, 1)
+      if (e.key === keyPrint) print()
+      if (e.key === keySave) save()
+      if (e.key === keyChgStyle) changeStyle()
+      if (e.key === keyFrontShape) frontShp()
+      if (e.key === keyBackShape) backShp()
+    }
+
+    function print() {
+      let str = `place-line-${getCurrentDateUCode()}/${placeList.length}`
+
+      const drwShpList = []
+      for (const plc of placeList) {
+        const shp = plc.shp
+        str += `/${shp.uCode}/${shp.x}/${shp.y}`
+        drwShpList.push(shp)
+
+        // scaled shp
+        if (plc.shp !== plc.origin) console.log(createSimpleLineStrSet(plc.shp))
+      }
+
+      saveStrPlace = str
+      // const label = document.getElementById('id-label-print')
+      // label.innerText = saveStr
+
+      // const current = placeList[currentI]
+      // for (const dw of current.shp.list) {
+      //   // dw.width = 1
+      //   dw.color = 'blue'
+      // }
+
+      const mrgLine = mergeSpLineInfo(`line-${getCurrentDateUCode()}`, drwShpList)
+      fitSimpleLineInfo(mrgLine)
+      saveStrMerge = createSimpleLineStrSet(mrgLine)
+      // const label01 = document.getElementById('id-label-print-01')
+      // label01.innerText = saveStr01
+      drawLineInfo(ctx, mrgLine, 800, 10, true, false)
+
+      // for (const dw of current.shp.list) {
+      //   // dw.width = 0
+      //   dw.color = 'red'
+      // }
+
+      console.log(saveStrPlace)
+      console.log(saveStrMerge)
+    }
+
+    function save() {
+      for (const plc of placeList) {
+        // scaled shp
+        if (plc.shp !== plc.origin) {
+          const str = createSimpleLineStrSet(plc.shp)
+          saveString(str.split('/')[0], str)
+        }
+      }
+
+      saveString(saveStrPlace.split('/')[0], saveStrPlace)
+      saveString(saveStrMerge.split('/')[0], saveStrMerge)
+    }
+
+    function saveToServer() {
+      const label = document.getElementById('id-label-result')
+      for (const plc of placeList) {
+        // scaled shp
+        if (plc.shp !== plc.origin) {
+          const str = createSimpleLineStrSet(plc.shp)
+          const obj = {
+            uCode: plc.shp.uCode,
+            str: str,
+            type: 'line',
+            dsg: '',
+            memo0: `scale,${plc.origin.uCode}`,
+            memo1: '',
+            memo2: '',
+          }
+          postStrSet(obj, label)
+        }
+      }
+
+      const placeUCode = saveStrPlace.split('/')[0]
+      const placeObj = {
+        uCode: placeUCode,
+        str: saveStrPlace,
+        type: 'place-line',
+        dsg: '',
+        memo0: '',
+        memo1: '',
+        memo2: '',
+      }
+      postStrSet(placeObj, label)
+      const mergeObj = {
+        uCode: saveStrMerge.split('/')[0],
+        str: saveStrMerge,
+        type: 'line',
+        dsg: '',
+        memo0: `merge,${placeUCode}`,
+        memo1: '',
+        memo2: '',
+      }
+      postStrSet(mergeObj, mergeObj)
+    }
+
+    function changeStyle() {
+      // if (styleWidth === 1) {
+      //   styleWidth = 0
+      // } else {
+      //   styleWidth = 1
+      // }
+      // for (const plc of placeList) {
+      //   for (const dw of plc.shp.list) dw.width = styleWidth
+      // }
+      // draw()
+    }
+
+    function clearShapeUCode() {
+      const input = document.getElementById('id-input-shape-ucode')
+      input.value = ''
+    }
+
+    function changeScale() {
+      const inputScX = document.getElementById('id-input-scale-x')
+      const inputScY = document.getElementById('id-input-scale-y')
+      const scaleX = Number(inputScX.value)
+      const scaleY = Number(inputScY.value)
+      const plc = placeList[currentI]
+      plc.shp = createScaledLineInfo(plc.origin, scaleX, scaleY)
+      plc.shp.uCode = `line=${getCurrentDateUCode()}`
+      draw()
+    }
+
+    // const obj = {
+    //   uCode: '',
+    //   str: '',
+    //   type: '',
+    //   dsg: '',
+    //   memo0: '',
+    //   memo1: '',
+    //   memo2: '',
+    // }
+    function postStrSet(obj, label) {
+      const request = new Request('/str-set/add-str', {
+        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', body: JSON.stringify(obj)
+      })
+      fetch(request).then(response => {
+        return response.json()
+      }).then(result => {
+        console.log(result)
+        const str = `${obj.type}: ${result.code}`
+        label.innerText = `${label.innerText}, ${str}`
+      })
+    }
+  </script>
+</body>
+</html>

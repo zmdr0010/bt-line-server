@@ -32,7 +32,7 @@
   <div style="margin: 8px">
     <button style="margin: 4px" onclick="print()">print</button>
     <button style="margin: 4px" onclick="save()">save to file</button>
-    memo1: <input id="id-input-memo1" type="text" />
+    memo1(part name): <input id="id-input-memo1" type="text" />
     <button style="margin: 4px" onclick="saveToServer()">save to server</button>
     <label id="id-label-post-result">post result</label>
   </div>
@@ -386,7 +386,7 @@
       // const memo1 = req.body.memo1
       // const memo2 = req.body.memo2
       const linePoint = {
-        ucode: colorInfo.lineUCode,
+        uCode: colorInfo.lineUCode,
         str: linePointSet,
         type: 'line-point',
         dsg: '',
@@ -395,7 +395,7 @@
         memo2: '',
       }
       const color = {
-        ucode: colorInfo.uCode,
+        uCode: colorInfo.uCode,
         str: colorSet,
         type: 'coloring',
         dsg: '',
@@ -404,7 +404,7 @@
         memo2: '',
       }
       const line = {
-        ucode: resultInfo.uCode,
+        uCode: resultInfo.uCode,
         str: lineSet,
         type: 'line',
         dsg: '',
@@ -418,16 +418,15 @@
       console.log(color)
       console.log(line)
 
-      postStrSet(JSON.stringify(linePoint), label)
-      postStrSet(JSON.stringify(color), label)
-      postStrSet(JSON.stringify(line), label)
+      postStrSet(linePoint, label)
+      postStrSet(color, label)
+      postStrSet(line, label)
     }
 
     function postStrSet(obj, label) {
-      console.log(obj)
       const request = new Request('/str-set/add-str', {
         headers: { 'Content-Type': 'application/json' },
-        method: 'POST', body: obj
+        method: 'POST', body: JSON.stringify(obj)
       })
       fetch(request).then(response => {
         return response.json()

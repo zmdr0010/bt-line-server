@@ -18,7 +18,7 @@ router.get('/', (req, res) => {
 
 router.post('/add-str', (req, res) => {
   console.log(req.body)
-  const uCode = req.body.ucode
+  const uCode = req.body.uCode
   const str = req.body.str
   const dsg = req.body.dsg
   const type = req.body.type
@@ -47,6 +47,14 @@ router.get('/line-point-set-list', (req, res) => {
 
 router.get('/coloring-line-point-set-list', (req, res) => {
   strSetManager.getColoringAndLinePoint((result) => {
+    res.send(JSON.stringify(result))
+  })
+})
+
+router.get('/line-set/:uCode', (req, res) => {
+  const uCode = req.params.uCode
+  console.log(uCode)
+  strSetManager.getLineSet(uCode, (result) => {
     res.send(JSON.stringify(result))
   })
 })
