@@ -40,7 +40,9 @@ function init(path, name) {
                   type TEXT,
                   memo0 TEXT,
                   memo1 TEXT,
-                  memo2 TEXT
+                  memo2 TEXT,
+                  created_at TEXT NOT NULL DEFAULT current_timestamp,
+                  updated_at TEXT NOT NULL DEFAULT current_timestamp
                 )`
   db.run(strsSql)
 
@@ -49,7 +51,9 @@ function init(path, name) {
                   name TEXT NOT NULL,
                   memo0 TEXT,
                   memo1 TEXT,
-                  memo2 TEXT
+                  memo2 TEXT,
+                  created_at TEXT NOT NULL DEFAULT current_timestamp,
+                  updated_at TEXT NOT NULL DEFAULT current_timestamp
                 )`
   db.run(groupsSql)
 
@@ -67,6 +71,30 @@ function init(path, name) {
                       ON UPDATE NO ACTION
                 )`
   db.run(strGroupsSql)
+
+  // no ; -> error
+  const strsTriggerSpl = `CREATE TRIGGER IF NOT EXISTS update_strs_updated_at
+                          AFTER UPDATE ON strs
+                          WHEN old.updated_at <> current_timestamp
+                          BEGIN
+                               UPDATE strs
+                               SET updated_at = CURRENT_TIMESTAMP
+                               WHERE str_id = OLD.str_id;
+                          END;
+                         `
+  db.run(strsTriggerSpl)
+
+  // no ; -> error
+  const groupsTriggerSpl = `CREATE TRIGGER IF NOT EXISTS update_groups_updated_at
+                          AFTER UPDATE ON groups
+                          WHEN old.updated_at <> current_timestamp
+                          BEGIN
+                               UPDATE groups
+                               SET updated_at = CURRENT_TIMESTAMP
+                               WHERE group_id = OLD.group_id;
+                          END;
+                         `
+  db.run(groupsTriggerSpl)
 
   db.close()
 }
@@ -140,6 +168,15 @@ function getColoringAndLinePoint(callback) {
 }
 exports.getColoringAndLinePoint = getColoringAndLinePoint
 
+function getLineStrSet(uCode, callback) {
+  const info = {
+    params: [uCode],
+    where: 'ucode = ?'
+  }
+  getStrSet(info, callback)
+}
+exports.getLineSetList = getLineStrSet
+
 function getStrSetList(info, callback) {
   const db = openDb()
   const sql = `SELECT str strSet FROM strs WHERE ${info.where}`
@@ -153,6 +190,24 @@ function getStrSetList(info, callback) {
       list.push(row.strSet)
     })
     if (callback) callback({ code: 'list', list: list })
+  })
+
+  db.close()
+}
+
+function getStrSet(info, callback) {
+  const db = openDb()
+  const sql = `SELECT str strSet FROM strs WHERE ${info.where}`
+  db.get(sql, info.params, (err, row) => {
+    if (err) {
+      if (callback) callback({ code: 'error', msg: err.message })
+      return
+    }
+    if (!row) {
+      callback({ code: 'none', msg: 'have not str' })
+      return
+    }
+    if (callback) callback({ code: 'str', str: row.strSet })
   })
 
   db.close()
