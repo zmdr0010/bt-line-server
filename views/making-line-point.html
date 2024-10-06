@@ -139,7 +139,7 @@
         if (selectedP === p) {
           drawIndexCircle(ctx, p.i, p.x + sx, p.y + sy, 'red')
         } else {
-          drawIndexCircle(ctx, p.i, p.x + sx, p.y + sy)
+          drawIndexCircle(ctx, p.i, p.x + sx, p.y + sy, 'blue')
         }
       }
 
@@ -174,7 +174,7 @@
       const str = input.value
       if (str.length < 1) return
       const strSplit = str.split(',')
-      const shp = { width: 1, color: 'black', list: [] }
+      const shp = { width: 1, color: 'gray', list: [] }
       const pList = linePointInfo.pointInfo.list
       for (const ist of strSplit) {
         const i = Number(ist)
