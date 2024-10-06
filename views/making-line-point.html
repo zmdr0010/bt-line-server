@@ -32,6 +32,7 @@
   <div style="margin: 8px">
     <button style="margin: 4px" onclick="print()">print</button>
     <button style="margin: 4px" onclick="save()">save to file</button>
+    memo1: <input id="id-input-memo1" type="text" />
     <button style="margin: 4px" onclick="saveToServer()">save to server</button>
     <label id="id-label-post-result">post result</label>
   </div>
@@ -365,6 +366,8 @@
       const linePointSet = createLinePointSet(resultInfo)
       colorInfo.lineUCode = linePointSet.split('/')[0]
       const colorSet = createColorSet(colorInfo)
+      const inputMemo1 = document.getElementById('id-input-memo1')
+      const memo1 = inputMemo1.value
       // saveString(resultInfo.uCode, lineSet)
       // saveString(colorInfo.lineUCode, linePointSet)
       // saveString(colorInfo.uCode, colorSet)
@@ -388,7 +391,7 @@
         type: 'line-point',
         dsg: '',
         memo0: '',
-        memo1: '',
+        memo1: memo1,
         memo2: '',
       }
       const color = {
@@ -397,7 +400,7 @@
         type: 'coloring',
         dsg: '',
         memo0: 'line-point',
-        memo1: '',
+        memo1: memo1,
         memo2: '',
       }
       const line = {
@@ -406,7 +409,7 @@
         type: 'line',
         dsg: '',
         memo0: `line-point,${colorInfo.lineUCode}`,
-        memo1: '',
+        memo1: memo1,
         memo2: '',
       }
       const label = document.getElementById('id-label-post-result')
