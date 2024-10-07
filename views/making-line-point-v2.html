@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>making line point v2</title>
+</head>
+<body onload="init()">
+  <div style="margin: 16px">
+    line uCode: <input id="id-input-line-ucode" type="text" />
+    <button onclick="clearLineUCode()">X</button>
+    <button onclick="loadLine()">load line</button>
+  </div>
+  <div style="margin: 16px">
+    color uCode: <input id="id-input-color-ucode" type="text" />
+    <button onclick="clearColorUCode()">X</button>
+    <button onclick="loadColor()">load color</button>
+  </div>
+  <div style="margin: 16px">
+    draw scale: <input id="id-input-scale" type="number" value="1.0" />
+    <button onclick="changeScale()">change scale</button>
+    <input id="id-input-range-scale" type="range" min="0.1" max="20.0" value="1.0" />
+  </div>
+  <div style="margin: 16px">
+    line color: <input id="id-input-line-color" type="text" value="black" />
+    <button onclick="changeLineColor()">change line color</button>
+    line width: <input id="id-input-line-width" type="number" value="1" min="1" />
+    <button onclick="changeLineWidth()">change line width</button>
+    shape color: <input id="id-input-shape-color" type="text" value="white" />
+    <button onclick="changeShapeColor()">change shape color</button>
+  </div>
+  <div style="margin: 16px">
+    select pointI: <input id="id-input-select-point-i" type="number" min="0" />
+    <button onclick="selectPointI()">select</button>
+    <button onclick="nextPointI()">next</button>
+    <button onclick="prevPointI()">prev</button>
+    x: <input id="id-input-point-x" type="number" />
+    y: <input id="id-input-point-y" type="number" />
+    <button onclick="movePoint()">move point</button>
+    <label id="id-label-mode">add</label>
+    <button onclick="changeMode()">change mode</button>
+    <button onclick="popPoint()">pop point</button>
+  </div>
+  <div style="margin: 16px">
+    select shpI: <input id="id-input-select-shp-i" type="number" min="0" />
+    <button onclick="selectShp()">select</button>
+    <button onclick="nextShp()">next</button>
+    <button onclick="prevShp()">prev</button>
+    <button onclick="removeShp()">remove</button>
+  </div>
+  <div style="margin: 16px">
+    shape(i order): <input id="id-input-add-shape" type="text" />
+    <button onclick="addShape()">add shape</button>
+    <button onclick="clearInputAddShape()">X</button>
+    isShape: <input id="id-input-is-shape" type="checkbox" checked />
+  </div>
+  <div style="margin: 8px">
+    <button style="margin: 4px" onclick="print()">print</button>
+    <button style="margin: 4px" onclick="save()">save to file</button>
+    memo1(part name): <input id="id-input-memo1" type="text" />
+    <button style="margin: 4px" onclick="saveToServer()">save to server</button>
+    <label id="id-label-post-result">post result</label>
+  </div>
+  <div style="margin: 8px"><canvas id="id-canvas"></canvas></div>
+
+  <script type="text/javascript" src="fnc/fnc-draw.js"></script>
+  <script type="text/javascript" src="fnc/fnc-line-info.js"></script>
+  <script type="text/javascript" src="fnc/fnc-save.js"></script>
+  <script type="text/javascript" src="fnc/fnc-transform-line-info.js"></script>
+  <script>
+    let keyLeft = 'b'//'m'//'z'//'ArrowLeft'
+    let keyRight = 'm'//'.'//'c'//'ArrowRight'
+    let keyUp = 'h'//'k'//'s'//'ArrowUp'
+    let keyDown = 'n'//','//'x'//'ArrowDown'
+    let keyPrint = 'p'
+    let keySave = 's'
+    let keyNextP = ']'
+    let keyPrevP = '['
+    let keyNextShp = '='
+    let keyPrevShp = '-'
+    let keyChangeMode = '\\'
+    let keyAddShp = 'Enter'
+
+    let canvas
+    let ctx
+    let sx = 100
+    let sy = 100
+    let linePointInfo
+    let selectPI = 0
+    let resultInfo
+    let itvX = 1
+    let itvY = 1
+    let selectShpI = 0
+    let colorInfo
+    let mode = 'add' // add/edit
+
+    let lineWidth = 1
+    let lineColor = 'black'
+    let shapeColor = 'white'
+
+    let scale = 1
+
+    function init() {
+      canvas = document.getElementById('id-canvas')
+      canvas.width = window.innerWidth - 16 - 16
+      canvas.height = window.innerHeight - 16 - 16
+      canvas.style.backgroundColor = 'ivory'
+      ctx = canvas.getContext('2d')
+      canvas.addEventListener('mousedown', onMouseDown)
+      document.addEventListener('keydown', onKeyDown)
+      const rangeScale = document.getElementById('id-input-range-scale')
+      rangeScale.addEventListener('change', () => {
+        const input = document.getElementById('id-input-scale')
+        input.value = rangeScale.value
+        scale = Number(rangeScale.value)
+        console.log(scale)
+        draw()
+      })
+
+      linePointInfo = {
+        uCode: `line-${getCurrentDateUCode()}`,
+        w: 0,
+        h: 0,
+        x: 0,
+        y: 0,
+        pointInfo: {
+          list: []
+        },
+        list: [],
+        child: []
+      }
+
+      colorInfo = {
+        uCode: `color-${getCurrentDateUCode()}`,
+        lineUCode: linePointInfo.uCode,
+        list: [
+          // { width: 1, color: 'black'}
+        ]
+      }
+
+      draw()
+    }
+
+    function onMouseDown(e) {
+      const mx = e.offsetX / scale
+      const my = e.offsetY / scale
+      const x = mx - (sx / scale)
+      const y = my - (sy / scale)
+      if (mode === 'add') {
+        const pList = linePointInfo.pointInfo.list
+        const p = pList.find(p => p.x === x && p.y === y)
+        if (!p) pList.push({ i: pList.length, x: x, y: y })
+        if (pList.length === 1) updatePointInput()
+      } else {
+        if (selectPI >= linePointInfo.pointInfo.list.length) return
+        const p = linePointInfo.pointInfo.list[selectPI]
+        if (!p) return
+        p.x = x
+        p.y = y
+        updateResultInfo()
+      }
+      draw()
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+      ctx.beginPath()
+      ctx.strokeStyle = 'gray'
+      ctx.lineWidth = 1
+      ctx.strokeRect(sx, sy, 1000, 1000)
+
+      const scSx = sx / scale
+      const scSy = sy / scale
+
+      if (linePointInfo.list.length > 0) drawLineInfo(ctx, linePointInfo, scSx, scSy, false, false, scale)
+
+      const pList = linePointInfo.pointInfo.list
+      const selectedP = pList[selectPI]
+      for (const p of pList) {
+        if (selectedP === p) {
+          drawIndexCircle(ctx, p.i, p.x + scSx, p.y + scSy, 'red', scale)
+        } else {
+          drawIndexCircle(ctx, p.i, p.x + scSx, p.y + scSy, 'blue', scale)
+        }
+      }
+
+      // result
+      if (resultInfo && resultInfo.list.length > 0) {
+        drawLineInfo(ctx, resultInfo, sx + 1050, sy, true)
+      }
+    }
+
+    function print() {
+      const lineSet = createSimpleLineStrSet(resultInfo)
+      const linePointSet = createLinePointSet(resultInfo)
+      colorInfo.lineUCode = linePointSet.split('/')[0]
+      const colorSet = createColorSet(colorInfo)
+      console.log(lineSet)
+      console.log(linePointSet)
+      console.log(colorSet)
+    }
+
+    function save() {
+      const lineSet = createSimpleLineStrSet(resultInfo)
+      const linePointSet = createLinePointSet(resultInfo)
+      colorInfo.lineUCode = linePointSet.split('/')[0]
+      const colorSet = createColorSet(colorInfo)
+      saveString(resultInfo.uCode, lineSet)
+      saveString(colorInfo.lineUCode, linePointSet)
+      saveString(colorInfo.uCode, colorSet)
+    }
+
+    function addShape() {
+      const input = document.getElementById('id-input-add-shape')
+      const inputIsShape = document.getElementById('id-input-is-shape')
+      const str = input.value
+      if (str.length < 1) return
+      const strSplit = str.split(',')
+      const shp = { width: 1, color: 'gray', list: [] }
+      const pList = linePointInfo.pointInfo.list
+      for (const ist of strSplit) {
+        const i = Number(ist)
+        shp.list.push(pList[i])
+      }
+      linePointInfo.list.push(shp)
+      if (inputIsShape.checked) {
+        colorInfo.list.push({ width: 0, color: shapeColor })
+      } else {
+        colorInfo.list.push({ width: lineWidth, color: lineColor })
+      }
+      if (linePointInfo.list.length === 1) {
+        const inputSelect = document.getElementById('id-input-select-shp-i')
+        inputSelect.value = selectShpI
+        shp.width = 0
+        shp.color = 'red'
+      }
+      input.value = ''
+      updateResultInfo()
+      draw()
+    }
+
+    function clearInputAddShape() {
+      const input = document.getElementById('id-input-add-shape')
+      input.value = ''
+    }
+
+    function selectPointI() {
+      const input = document.getElementById('id-input-select-point-i')
+      const i = Number(input.value)
+      const pList = linePointInfo.pointInfo.list
+      if (i >= pList.length) return
+      selectPI = i
+      updatePointInput()
+      draw()
+    }
+
+    function nextPointI() {
+      selectPI++
+      if (selectPI >= linePointInfo.pointInfo.list.length) selectPI = 0
+      const input = document.getElementById('id-input-select-point-i')
+      input.value = selectPI
+      updatePointInput()
+      draw()
+    }
+
+    function prevPointI() {
+      selectPI--
+      if (selectPI < 0) selectPI = linePointInfo.pointInfo.list.length - 1
+      const input = document.getElementById('id-input-select-point-i')
+      input.value = selectPI
+      updatePointInput()
+      draw()
+    }
+
+    function updatePointInput() {
+      const selectedP = linePointInfo.pointInfo.list[selectPI]
+      const inputX = document.getElementById('id-input-point-x')
+      const inputY = document.getElementById('id-input-point-y')
+      inputX.value = selectedP.x
+      inputY.value = selectedP.y
+    }
+
+    function onKeyDown(e) {
+      if (e.key === keySave) save()
+      if (e.key === keyPrint) print()
+      if (e.key === keyLeft) move(-1, 0)
+      if (e.key === keyRight) move(1, 0)
+      if (e.key === keyUp) move(0, -1)
+      if (e.key === keyDown) move(0, 1)
+      if (e.key === keyNextP) nextPointI()
+      if (e.key === keyPrevP) prevPointI()
+      if (e.key === keyNextShp) nextShp()
+      if (e.key === keyPrevShp) prevShp()
+      if (e.key === keyChangeMode) changeMode()
+      if (e.key === keyAddShp) addShape()
+    }
+
+    function move(dx, dy) {
+      const selectedP = linePointInfo.pointInfo.list[selectPI]
+      if (!selectedP) return
+      selectedP.x += dx * itvX
+      selectedP.y += dy * itvY
+      updateResultInfo()
+      draw()
+    }
+
+    function movePoint() {
+      const selectedP = linePointInfo.pointInfo.list[selectPI]
+      if (!selectedP) return
+      const inputX = document.getElementById('id-input-point-x')
+      const inputY = document.getElementById('id-input-point-y')
+      selectedP.x = Number(inputX.value)
+      selectedP.y = Number(inputY.value)
+      updateResultInfo()
+      draw()
+    }
+
+    function popPoint() {
+      const lastP = linePointInfo.pointInfo.list[linePointInfo.pointInfo.list.length-1]
+      let hasShp = false
+      for (const shp of linePointInfo.list) {
+        for (const p of shp.list) {
+          if (p === lastP) {
+            hasShp = true
+            break
+          }
+        }
+      }
+      if (hasShp) {
+        console.log('has shp return')
+        return
+      }
+
+      linePointInfo.pointInfo.list.pop()
+      draw()
+    }
+
+    function updateResultInfo() {
+      resultInfo = structuredClone(linePointInfo)
+      coloringLineInfo(resultInfo, colorInfo)
+      fitSimpleLineInfo(resultInfo)
+    }
+
+    function selectShp() {
+      if (linePointInfo.list.length < 1) return
+      const input = document.getElementById('id-input-select-shp-i')
+      const i = Number(input.value)
+      if (i >= linePointInfo.list.length) return
+      selectShpI = i
+      updateSelectShp()
+      draw()
+    }
+
+    function nextShp() {
+      if (linePointInfo.list.length < 1) return
+      selectShpI++
+      if (selectShpI >= linePointInfo.list.length) selectShpI = 0
+      const input = document.getElementById('id-input-select-shp-i')
+      input.value = selectShpI
+      updateSelectShp()
+      draw()
+    }
+
+    function prevShp() {
+      if (linePointInfo.list.length < 1) return
+      selectShpI--
+      if (selectShpI < 0) selectShpI = linePointInfo.list.length - 1
+      const input = document.getElementById('id-input-select-shp-i')
+      input.value = selectShpI
+      updateSelectShp()
+      draw()
+    }
+
+    function removeShp() {
+      if (linePointInfo.list.length < 1 || selectShpI >= linePointInfo.list.length) return
+      linePointInfo.list.splice(selectShpI, 1)
+      colorInfo.list.splice(selectShpI, 1)
+      selectShpI = 0
+      const input = document.getElementById('id-input-select-shp-i')
+      input.value = selectShpI
+      updateSelectShp()
+      updateResultInfo()
+      draw()
+    }
+
+    function updateSelectShp() {
+      if (linePointInfo.list.length < 1) return
+      const selectedShp = linePointInfo.list[selectShpI]
+      if (!selectedShp) return
+      for (const shp of linePointInfo.list) {
+        shp.width = 1
+        shp.color = 'gray'
+      }
+      if (selectedShp.list[0] === selectedShp.list[selectedShp.list.length-1]) {
+        selectedShp.width = 0
+      } else {
+        selectedShp.width = 1
+      }
+      selectedShp.color = 'red'
+    }
+
+    function changeMode() {
+      if (mode === 'add') {
+        mode = 'edit'
+        canvas.style.backgroundColor = 'lightblue'
+      } else {
+        mode = 'add'
+        canvas.style.backgroundColor = 'ivory'
+      }
+      const label = document.getElementById('id-label-mode')
+      label.innerText = mode
+    }
+
+    function saveToServer() {
+      const lineSet = createSimpleLineStrSet(resultInfo)
+      const linePointSet = createLinePointSet(resultInfo)
+      colorInfo.lineUCode = linePointSet.split('/')[0]
+      const colorSet = createColorSet(colorInfo)
+      const inputMemo1 = document.getElementById('id-input-memo1')
+      const memo1 = inputMemo1.value
+      // saveString(resultInfo.uCode, lineSet)
+      // saveString(colorInfo.lineUCode, linePointSet)
+      // saveString(colorInfo.uCode, colorSet)
+
+      //// making-line-point / coloring-line-point
+      ////    line-point, coloring(1, black) (memo0: line-point -> line (memo0: line-point,line-point uCode) <- record origin
+      //// line coloring
+      ////    line-coloring (memo0: line,line uCode)
+
+      // POST /str-set/add-str
+      // const uCode = req.body.ucode
+      // const str = req.body.str
+      // const dsg = req.body.dsg
+      // const type = req.body.type
+      // const memo0 = req.body.memo0
+      // const memo1 = req.body.memo1
+      // const memo2 = req.body.memo2
+      const linePoint = {
+        uCode: colorInfo.lineUCode,
+        str: linePointSet,
+        type: 'line-point',
+        dsg: '',
+        memo0: '',
+        memo1: memo1,
+        memo2: '',
+      }
+      const color = {
+        uCode: colorInfo.uCode,
+        str: colorSet,
+        type: 'coloring',
+        dsg: '',
+        memo0: 'line-point',
+        memo1: memo1,
+        memo2: '',
+      }
+      const line = {
+        uCode: resultInfo.uCode,
+        str: lineSet,
+        type: 'line',
+        dsg: '',
+        memo0: `line-point,${colorInfo.lineUCode}`,
+        memo1: memo1,
+        memo2: '',
+      }
+      const label = document.getElementById('id-label-post-result')
+      label.innerText = 'post: '
+      console.log(linePoint)
+      console.log(color)
+      console.log(line)
+
+      postStrSet(linePoint, label)
+      postStrSet(color, label)
+      postStrSet(line, label)
+    }
+
+    function postStrSet(obj, label) {
+      const request = new Request('/str-set/add-str', {
+        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', body: JSON.stringify(obj)
+      })
+      fetch(request).then(response => {
+        return response.json()
+      }).then(result => {
+        console.log(result)
+        const str = `${obj.type}: ${result.code}`
+        label.innerText = `${label.innerText}, ${str}`
+      })
+    }
+
+    function changeLineColor() {
+      const input = document.getElementById('id-input-line-color')
+      lineColor = input.value
+      updateColorData()
+      updateResultInfo()
+      draw()
+    }
+
+    function changeLineWidth() {
+      const input = document.getElementById('id-input-line-width')
+      lineWidth = Number(input.value)
+      updateColorData()
+      updateResultInfo()
+      draw()
+    }
+
+    function changeShapeColor() {
+      const input = document.getElementById('id-input-shape-color')
+      shapeColor = input.value
+      updateColorData()
+      updateResultInfo()
+      draw()
+    }
+
+    function updateColorData() {
+      const c = colorInfo.list[selectShpI]
+      if (c.width === 0) {
+        c.color = shapeColor
+      } else {
+        c.color = lineColor
+        c.width = lineWidth
+      }
+    }
+    function loadLine() {
+      const input = document.getElementById('id-input-line-ucode')
+      const uCode = input.value
+      if (uCode.length < 1) return
+
+      const request = new Request(`/str-set/line-set/${uCode}`)
+      fetch(request).then((response) => response.json()).then((json) => {
+        console.log(json)
+        if (json.code === 'str') {
+          const strSet = json.str
+          // load linePoint from lineSet
+          const loadLine = createSimpleLineInfo(strSet)
+          linePointInfo = createLinePointFromLineInfo(loadLine)
+          colorInfo.lineUCode = linePointInfo.uCode
+          colorInfo.list = []
+          for (const shp of linePointInfo.list) {
+            colorInfo.list.push({ width: shp.width, color: shp.color })
+          }
+          updateResultInfo()
+          draw()
+        }
+      })
+    }
+
+    function clearLineUCode() {
+      const input = document.getElementById('id-input-line-ucode')
+      input.value = ''
+    }
+
+    function loadColor() {
+      const input = document.getElementById('id-input-color-ucode')
+      const uCode = input.value
+      if (uCode.length < 1) return
+      const request = new Request(`/str-set/line-set/${uCode}`)
+      fetch(request).then((response) => response.json()).then((json) => {
+        console.log(json)
+        if (json.code === 'str') {
+          const strSet = json.str
+          const cSplit = strSet.split('/')
+          const pointUCode = cSplit[1]
+          const pReq = new Request(`/str-set/line-set/${pointUCode}`)
+          fetch(pReq).then((res) => res.json()).then((pJsn) => {
+            console.log(pJsn)
+            if (pJsn.code === 'str') {
+              const pSet = pJsn.str
+              const linePoint = createSimpleLineFromLinePointSet(pSet)
+              for (let i=2; i<cSplit.length; i++) {
+                const index = i - 2
+                const clrStr = cSplit[i]
+                const clrStrSplit = clrStr.split(',')
+                const width = Number(clrStrSplit[0])
+                const color = clrStrSplit[1]
+                const shp = linePoint.list[index]
+                shp.width = width
+                shp.color = color
+              }
+
+              linePointInfo = linePoint
+              colorInfo.lineUCode = linePointInfo.uCode
+              colorInfo.list = []
+              for (const shp of linePointInfo.list) {
+                colorInfo.list.push({ width: shp.width, color: shp.color })
+              }
+              updateResultInfo()
+              draw()
+            }
+          })
+        }
+      })
+    }
+
+    function clearColorUCode() {
+      const input = document.getElementById('id-input-color-ucode')
+      input.value = ''
+    }
+
+    function changeScale() {
+      const input = document.getElementById('id-input-scale')
+      const inputRange = document.getElementById('id-input-range-scale')
+      scale = Number(input.value)
+      inputRange.value = input.value
+      draw()
+    }
+  </script>
+</body>
+</html>

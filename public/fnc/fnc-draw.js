@@ -1,14 +1,14 @@
-function drawLineInfo(ctx, info, x, y, isOnBound=false, isOnCircle=false) {
-  if (isOnBound) drawBound(ctx, info, x + info.x, y + info.y)
+function drawLineInfo(ctx, info, x, y, isOnBound=false, isOnCircle=false, scale=1) {
+  if (isOnBound) drawBound(ctx, info, x + info.x, y + info.y, scale)
   for (const dw of info.list) {
-    drawPointList(ctx, dw, x + info.x, y + info.y)
-    if (isOnCircle) drawPointsCircle(ctx, dw, x + info.x, y + info.y)
+    drawPointList(ctx, dw, x + info.x, y + info.y, scale)
+    if (isOnCircle) drawPointsCircle(ctx, dw, x + info.x, y + info.y, scale)
   }
   // if (isOnBound) drawBound(ctx, info, x + info.x, y + info.y)
-  for (const c of info.child) drawLineInfo(ctx, c, x + info.x, y + info.y, isOnBound, isOnCircle)
+  for (const c of info.child) drawLineInfo(ctx, c, x + info.x, y + info.y, isOnBound, isOnCircle, scale)
 }
 
-function drawPointList(ctx, info, sx=0, sy=0) {
+function drawPointList(ctx, info, sx=0, sy=0, scale=1) {
   let startX = 0 + sx
   let startY = 0 + sy
   let type = (info.width > 0) ? 'stroke' : 'fill'
@@ -20,8 +20,8 @@ function drawPointList(ctx, info, sx=0, sy=0) {
   ctx.beginPath()
   let isFirst = true
   for (const p of info.list) {
-    const x = p.x + startX
-    const y = p.y + startY
+    const x = (p.x + startX) * scale
+    const y = (p.y + startY) * scale
     if (isFirst) {
       ctx.moveTo(x, y)
       isFirst = false
@@ -39,20 +39,20 @@ function drawPointList(ctx, info, sx=0, sy=0) {
   }
 }
 
-function drawBound(ctx, info, sx=0, sy=0, color='red') {
+function drawBound(ctx, info, sx=0, sy=0, color='red', scale=1) {
   ctx.beginPath()
   ctx.lineWidth = 1
   ctx.strokeStyle = color
-  ctx.strokeRect(sx, sy, info.w, info.h)
+  ctx.strokeRect(sx * scale, sy * scale, info.w, info.h)
   ctx.stroke()
 }
 
-function drawPointsCircle(ctx, info, sx=0, sy=0) {
+function drawPointsCircle(ctx, info, sx=0, sy=0, scale=1) {
   let startX = 0 + sx
   let startY = 0 + sy
   for (const p of info.list) {
-    const x = p.x + startX
-    const y = p.y + startY
+    const x = (p.x + startX) * scale
+    const y = (p.y + startY) * scale
     drawCircle(ctx, x, y)
   }
 }
@@ -83,9 +83,9 @@ function drawPointsIndexCircle(ctx, info, sx=0, sy=0) {
   }
 }
 
-function drawIndexCircle(ctx, i, sx=0, sy=0, color='black') {
-  const x = sx
-  const y = sy
+function drawIndexCircle(ctx, i, sx=0, sy=0, color='black', scale=1) {
+  const x = sx * scale
+  const y = sy * scale
   drawCircle(ctx, x, y, 8, color)
   ctx.font = '12px serif'
   let m = -3.5
