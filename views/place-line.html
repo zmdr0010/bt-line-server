@@ -88,6 +88,16 @@
         <button onclick="removeShp()">remove</button>
       </div>
     </div>
+    <div style="margin: 4px; border: solid 1px">
+      <div style="margin: 6px">
+        <div style="margin: 6px">
+          x: <input id="id-input-result-x" value="700" type="number" onchange="changeResultXY()"/>
+        </div>
+        <div style="margin: 6px">
+          y: <input id="id-input-result-y" value="10" type="number" onchange="changeResultXY()"/>
+        </div>
+      </div>
+    </div>
     <div style="margin: 4px">
       <h3>Keyboard</h3>
       <h4>left [ b ], right [ m ], up [ h ], down [ n ]</h4>
@@ -140,6 +150,9 @@
 
     let saveStrPlace
     let saveStrMerge
+
+    let resultX = 700
+    let resultY = 10
 
     function init() {
       const main = document.getElementById('id-main')
@@ -345,7 +358,7 @@
       saveStrMerge = createSimpleLineStrSet(mrgLine)
       // const label01 = document.getElementById('id-label-print-01')
       // label01.innerText = saveStr01
-      drawLineInfo(ctx, mrgLine, 800, 10, true, false)
+      drawLineInfo(ctx, mrgLine, resultX, resultY, true, false)
 
       // for (const dw of current.shp.list) {
       //   // dw.width = 0
@@ -448,6 +461,14 @@
         const str = `${obj.type}: ${result.code}`
         label.innerText = `${label.innerText}, ${str}`
       })
+    }
+
+    function changeResultXY() {
+      const inputX = document.getElementById('id-input-result-x')
+      const inputY = document.getElementById('id-input-result-y')
+      resultX = Number(inputX.value)
+      resultY = Number(inputY.value)
+      draw()
     }
   </script>
 </body>
