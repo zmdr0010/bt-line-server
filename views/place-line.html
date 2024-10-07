@@ -3,48 +3,109 @@
 <head>
   <meta charset="UTF-8">
   <title>place line</title>
+  <style>
+    .menu {
+      height: 100%;
+      width: 30%;
+      position: fixed;
+      z-index: 1;
+      overflow-x: hidden;
+    }
+    .main {
+      height: 100%;
+      width: calc(100% - 30% - 8px - 16px);
+      position: fixed;
+      z-index: 1;
+      overflow-x: hidden;
+      right: 12px;
+    }
+  </style>
 </head>
 <body onload="init()">
-  <div style="margin: 8px"><h3 id="id-h3-ucode"></h3></div>
-  <div style="margin: 8px">
-    input lineSet uCode to add: <input id="id-input-shape-ucode" type="text" /> <button onclick="addShp()">add lineSet</button>
-    <button onclick="clearShapeUCode()">X</button>
+  <div class="menu">
+    <div style="margin: 8px"><h3 id="id-h3-ucode"></h3></div>
+    <div style="margin: 4px; border: solid 1px">
+      <div style="margin: 8px">
+        line uCode: <input id="id-input-shape-ucode" type="text" /> <button onclick="addShp()">add line</button>
+        <button onclick="clearShapeUCode()">X</button>
+      </div>
+    </div>
+
+    <div style="margin: 4px; border: solid 1px">
+      <div style="margin: 8px">
+        <div style="margin: 6px">
+          <label id="id-label-current-shape-ucode">current lineSet uCode: </label>
+        </div>
+        <div style="margin: 6px">
+          x: <input id="id-input-x" value="0" type="number" onchange="changeXY()"/>
+        </div>
+        <div style="margin: 6px">
+          y: <input id="id-input-y" value="0" type="number" onchange="changeXY()"/>
+        </div>
+        <div style="margin: 6px">
+          move itvX: <input id="id-input-move-itv-x" value="10" type="number" onchange="changeMvItvXY()"/>
+        </div>
+        <div style="margin: 6px">
+          move itvY: <input id="id-input-move-itv-y" value="10" type="number" onchange="changeMvItvXY()"/>
+        </div>
+        <div style="margin: 6px">
+          start x: <input id="id-input-start-x" value="10" type="number" onchange="changeStartXY()"/>
+        </div>
+        <div style="margin: 6px">
+          start y: <input id="id-input-start-y" value="10" type="number" onchange="changeStartXY()"/>
+        </div>
+        <div style="margin: 6px">
+          scaleX: <input id="id-input-scale-x" value="1.0" type="number" />
+        </div>
+        <div style="margin: 6px">
+          scaleY: <input id="id-input-scale-y" value="1.0" type="number" />
+        </div>
+        <div style="margin: 6px">
+          <button onclick="changeScale()">change</button>
+        </div>
+      </div>
+    </div>
+    <div style="margin: 4px; border: solid 1px">
+      <div style="margin: 8px">
+        <div style="margin: 6px">
+          <button onclick="nextShp()">next shp</button>
+          <button onclick="prevShp()">prev shp</button>
+        </div>
+        <div style="margin: 6px">
+          <button onclick="frontShp()">front shp</button>
+          <button onclick="backShp()">back shp</button>
+        </div>
+        <div style="margin: 6px">
+          <button onclick="move(-1,0)">left</button>
+          <button onclick="move(1,0)">right</button>
+          <button onclick="move(0,-1)">top</button>
+          <button onclick="move(0,1)">bottom</button>
+        </div>
+      </div>
+    </div>
+    <div style="margin: 4px; border: solid 1px">
+      <div style="margin: 14px;">
+        <button onclick="removeShp()">remove</button>
+      </div>
+    </div>
+    <div style="margin: 4px">
+      <h3>Keyboard</h3>
+      <h4>left [ b ], right [ m ], up [ h ], down [ n ]</h4>
+      <h4>print [ p ], save [ s ]</h4>
+      <h4>add shape [ a ], remove shape [ x ]</h4>
+      <h4>next shape [ ] ], prev shape [ [ ]</h4>
+      <h4>front shape [ t ], back shape [ y ]</h4>
+    </div>
   </div>
-  <div style="margin: 8px">
-    <label id="id-label-current-shape-ucode">current lineSet uCode: </label>
-    x: <input id="id-input-x" value="0" type="number" onchange="changeXY()"/>
-    y: <input id="id-input-y" value="0" type="number" onchange="changeXY()"/>
+  <div class="main" id="id-main">
+    <div style="margin: 8px">
+      <button onclick="print()">print</button>
+      <button onclick="save()">save</button>
+      <button onclick="saveToServer()">save to server</button>
+      <label id="id-label-result">result</label>
+    </div>
+    <div style="margin: 8px"><canvas id="id-canvas"></canvas></div>
   </div>
-  <div style="margin: 8px">
-    move itvX: <input id="id-input-move-itv-x" value="10" type="number" onchange="changeMvItvXY()"/>
-    move itvY: <input id="id-input-move-itv-y" value="10" type="number" onchange="changeMvItvXY()"/>
-    start x: <input id="id-input-start-x" value="10" type="number" onchange="changeStartXY()"/>
-    start y: <input id="id-input-start-y" value="10" type="number" onchange="changeStartXY()"/>
-  </div>
-  <div style="margin: 8px">
-    scaleX: <input id="id-input-scale-x" value="1.0" type="number" />
-    scaleY: <input id="id-input-scale-y" value="1.0" type="number" />
-    <button onclick="changeScale()">change</button>
-  </div>
-  <div style="margin: 12px">
-    <button onclick="nextShp()">next shp</button>
-    <button onclick="prevShp()">prev shp</button>
-    <button onclick="frontShp()">front shp</button>
-    <button onclick="backShp()">back shp</button>
-    <button onclick="move(-1,0)">left</button>
-    <button onclick="move(1,0)">right</button>
-    <button onclick="move(0,-1)">top</button>
-    <button onclick="move(0,1)">bottom</button>
-    <button onclick="changeStyle()">change style</button>
-  </div>
-  <div style="margin: 12px">
-    <button onclick="removeShp()">remove</button>
-    <button onclick="print()">print</button>
-    <button onclick="save()">save</button>
-    <button onclick="saveToServer()">save to server</button>
-    <label id="id-label-result">result</label>
-  </div>
-  <div style="margin: 8px"><canvas id="id-canvas"></canvas></div>
 
   <script type="text/javascript" src="fnc/fnc-draw.js"></script>
   <script type="text/javascript" src="fnc/fnc-line-info.js"></script>
@@ -71,7 +132,6 @@
     let keyPrint = 'p'
     let keySave = 's'
     let keyAddShape = 'a'
-    let keyChgStyle = '='
     let keyRemoveShape = 'x'
     let keyNextShape = ']'
     let keyPrevShape = '['
@@ -82,10 +142,11 @@
     let saveStrMerge
 
     function init() {
+      const main = document.getElementById('id-main')
       canvas = document.getElementById('id-canvas')
-      canvas.width = window.innerWidth - 16 - 16
-      canvas.height = window.innerHeight - 16 - 16
-      canvas.style.backgroundColor = 'ivory'
+      canvas.width = main.offsetWidth - 16 * 3
+      canvas.height = main.offsetHeight - 16 * 4
+      canvas.style.border = 'solid 1px'
       ctx = canvas.getContext('2d')
 
       placeUCode = `place-line-${getCurrentDateUCode()}`
@@ -252,7 +313,6 @@
       if (e.key === keyDown) move(0, 1)
       if (e.key === keyPrint) print()
       if (e.key === keySave) save()
-      if (e.key === keyChgStyle) changeStyle()
       if (e.key === keyFrontShape) frontShp()
       if (e.key === keyBackShape) backShp()
     }
@@ -351,18 +411,6 @@
       postStrSet(mergeObj, mergeObj)
     }
 
-    function changeStyle() {
-      // if (styleWidth === 1) {
-      //   styleWidth = 0
-      // } else {
-      //   styleWidth = 1
-      // }
-      // for (const plc of placeList) {
-      //   for (const dw of plc.shp.list) dw.width = styleWidth
-      // }
-      // draw()
-    }
-
     function clearShapeUCode() {
       const input = document.getElementById('id-input-shape-ucode')
       input.value = ''
@@ -375,7 +423,7 @@
       const scaleY = Number(inputScY.value)
       const plc = placeList[currentI]
       plc.shp = createScaledLineInfo(plc.origin, scaleX, scaleY)
-      plc.shp.uCode = `line=${getCurrentDateUCode()}`
+      plc.shp.uCode = `line-${getCurrentDateUCode()}`
       draw()
     }
 
