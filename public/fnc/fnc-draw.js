@@ -1,5 +1,5 @@
 function drawLineInfo(ctx, info, x, y, isOnBound=false, isOnCircle=false, scale=1) {
-  if (isOnBound) drawBound(ctx, info, x + info.x, y + info.y, scale)
+  if (isOnBound) drawBound(ctx, info, x + info.x, y + info.y, 'red', scale)
   for (const dw of info.list) {
     drawPointList(ctx, dw, x + info.x, y + info.y, scale)
     if (isOnCircle) drawPointsCircle(ctx, dw, x + info.x, y + info.y, scale)
@@ -43,7 +43,7 @@ function drawBound(ctx, info, sx=0, sy=0, color='red', scale=1) {
   ctx.beginPath()
   ctx.lineWidth = 1
   ctx.strokeStyle = color
-  ctx.strokeRect(sx * scale, sy * scale, info.w, info.h)
+  ctx.strokeRect(sx * scale, sy * scale, info.w * scale, info.h * scale)
   ctx.stroke()
 }
 
