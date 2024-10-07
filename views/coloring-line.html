@@ -49,6 +49,11 @@
       <button onclick="clearInput('id-input-line-ucode')">X</button>
       <button onclick="loadLine()">load line</button>
     </div>
+    <div style="margin: 8px">
+      color uCode: <input id="id-input-color-ucode" type="text" />
+      <button onclick="clearInput('id-input-color-ucode')">X</button>
+      <button onclick="loadColor()">load color</button>
+    </div>
     <div style="margin: 16px">
       scale: <input id="id-input-scale" type="number" value="1.0" />
       <button onclick="changeScale()">change scale</button>
@@ -652,6 +657,54 @@
         console.log(result)
         const str = `${obj.type}: ${result.code}`
         label.innerText = `${label.innerText}, ${str}`
+      })
+    }
+
+    function loadColor() {
+      const input = document.getElementById('id-input-color-ucode')
+      const uCode = input.value
+      if (uCode.length < 1) return
+      const request = new Request(`/str-set/line-set/${uCode}`)
+      fetch(request).then((response) => response.json()).then((json) => {
+        console.log(json)
+        if (json.code === 'str') {
+          const colorSet = json.str
+          const cSplit = colorSet.split('/')
+          const lineUCode = cSplit[1]
+          const lineRequest = new Request(`/str-set/line-set/${lineUCode}`)
+          fetch(lineRequest).then(res => res.json()).then(lJson => {
+            console.log(lJson)
+            if (lJson.code === 'str') {
+              const lineSet = lJson.str
+              const line = createSimpleLineInfo(lineSet)
+              for (let i=2; i<cSplit.length; i++) {
+                const index = i - 2
+                const str = cSplit[i]
+                const strSplit = str.split(',')
+                const dw = line.list[index]
+                dw.width = Number(strSplit[0])
+                dw.color = strSplit[1]
+              }
+              linePoint = createLinePointFromLineInfo(line)
+              linePoint.origin = line
+              console.log(linePoint)
+
+              checkedInfo.shpI = -1
+              checkedInfo.div = null
+              checkedInfo.shp = null
+              checkedInfo.list = []
+              const shpContainer = document.getElementById('id-shp-container')
+              shpContainer.innerHTML = ''
+              for (const shp of linePoint.list) {
+                const div = createShpDiv(shp)
+                checkedInfo.list.push(div)
+                shpContainer.appendChild(div)
+              }
+
+              draw()
+            }
+          })
+        }
       })
     }
   </script>
