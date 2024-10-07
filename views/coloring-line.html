@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>coloring line</title>
+  <style>
+    .palette {
+      height: 100%;
+      width: 10%;
+      position: fixed;
+      z-index: 1;
+      overflow-x: hidden;
+      /*background-color: white;*/
+    }
+    .shp {
+      height: 100%;
+      width: 20%;
+      position: fixed;
+      z-index: 1;
+      overflow-x: hidden;
+      /*background-color: gray;*/
+      left: calc(10% + 8px);
+    }
+    .main {
+      height: 100%;
+      width: calc(100% - 30% - 8px - 16px);
+      position: fixed;
+      z-index: 1;
+      overflow-x: hidden;
+      /*background-color: GhostWhite;*/
+      right: 12px;
+    }
+  </style>
+</head>
+<body onload="init()">
+  <div class="main" id="id-container">
+    <div style="margin: 6px">
+      <label id="id-label-copied-color">copied: color</label>
+      <button onclick="print()">print</button>
+      <button onclick="save()">save</button>
+      <button onclick="saveToServer()">save to server</button>
+      <label id="id-label-result">result</label>
+    </div>
+    <div style="margin: 6px"><canvas id="id-canvas"></canvas></div>
+  </div>
+  <div class="shp" id="id-shp">
+    <div style="margin: 8px">
+      line uCode: <input id="id-input-line-ucode" type="text" />
+      <button onclick="clearInput('id-input-line-ucode')">X</button>
+      <button onclick="loadLine()">load line</button>
+    </div>
+    <div style="margin: 16px">
+      scale: <input id="id-input-scale" type="number" value="1.0" />
+      <button onclick="changeScale()">change scale</button>
+      <input id="id-input-range-scale" type="range" min="0.1" max="20.0" value="1.0" />
+    </div>
+    <div style="margin: 8px">
+      <div style="margin: 4px">
+        point color: <input id="id-input-point-color" type="text" value="blue" />
+        <button onclick="clearInput('id-input-point-color')">X</button>
+      </div>
+      <div style="margin: 4px">
+        check color: <input id="id-input-check-color" type="text" value="red" />
+        <button onclick="clearInput('id-input-check-color')">X</button>
+      </div>
+      <button onclick="changePColor()">change</button>
+    </div>
+    <div style="margin: 4px">
+      canvas color: <input id="id-input-canvas-color" type="text" />
+      <button onclick="clearInput('id-input-canvas-color')">X</button>
+      <div style="margin: 4px">
+        <button onclick="changeCanvasColor()">change canvas color</button>
+      </div>
+    </div>
+    <div style="margin: 8px">
+      isDrawingPOrder: <input id="id-input-is-drawing-p-order" type="checkbox" checked />
+    </div>
+    <div style="margin: 8px">
+      <div style="margin: 4px">
+        shpI: <input id="id-input-shp-i" type="number" />
+        <button onclick="clearShpI()">X</button>
+      </div>
+      <div style="margin: 4px">
+        <button onclick="changeShpI()">change</button>
+        <button onclick="nextShpI()">next</button>
+        <button onclick="prevShpI()">prev</button>
+      </div>
+    </div>
+    <div id="id-shp-container"></div>
+  </div>
+  <div class="palette" id="id-palette">
+  </div>
+
+  <script type="text/javascript" src="fnc/fnc-draw.js"></script>
+  <script type="text/javascript" src="fnc/fnc-line-info.js"></script>
+  <script type="text/javascript" src="fnc/fnc-save.js"></script>
+  <script>
+    const colorSetList = [
+      'aliceblue/AliceBlue/F0F8FF/240,248,255',
+      'antiquewhite/AntiqueWhite/FAEBD7/250,235,215',
+      'aqua/Aqua/00FFFF/0,255,255',
+      'aquamarine/Aquamarine/7FFFD4/127,255,212',
+      'azure/Azure/F0FFFF/240,255,255',
+      'beige/Beige/F5F5DC/245,245,220',
+      'bisque/Bisque/FFE4C4/255,228,196',
+      'black/Black/000000/0,0,0',
+      'blanchedalmond/BlanchedAlmond/FFEBCD/255,235,205',
+      'blue/Blue/0000FF/0,0,255',
+      'blueviolet/BlueViolet/8A2BE2/138,43,226',
+      'brown/Brown/A52A2A/165,42,42',
+      'burlywood/Burlywood/DEB887/222,184,135',
+      'cadetblue/CadetBlue/5F9EA0/95,158,160',
+      'chartreuse/Chartreuse/7FFF00/127,255,0',
+      'chocolate/Chocolate/D2691E/210,105,30',
+      'coral/Coral/FF7F50/255,127,80',
+      'cornflowerblue/CornflowerBlue/6495ED/100,149,237',
+      'cornsilk/Cornsilk/FFF8DC/255,248,220',
+      'crimson/Crimson/DC143C/220,20,60',
+      'cyan/Cyan/00FFFF/0,255,255',
+      'darkblue/DarkBlue/00008B/0,0,139',
+      'darkcyan/DarkCyan/008B8B/0,139,139',
+      'darkgoldenrod/DarkGoldenrod/B8860B/184,134,11',
+      'darkgray/DarkGray/A9A9A9/169,169,169',
+      'darkgreen/DarkGreen/006400/0,100,0',
+      'darkgrey/DarkGrey/A9A9A9/169,169,169',
+      'darkkhaki/DarkKhaki/BDB76B/189,183,107',
+      'darkmagenta/DarkMagenta/8B008B/139,0,139',
+      'darkolivegreen/DarkOliveGreen/556B2F/85,107,47',
+      'darkorange/DarkOrange/FF8C00/255,140,0',
+      'darkorchid/DarkOrchid/9932CC/153,50,204',
+      'darkred/DarkRed/8B0000/139,0,0',
+      'darksalmon/DarkSalmon/E9967A/233,150,122',
+      'darkseagreen/DarkSeaGreen/8FBC8F/143,188,143',
+      'darkslateblue/DarkSlateBlue/483D8F/72,61,139',
+      'darkslategray/DarkSlateGray/2F4F4F/47,79,79',
+      'darkslategrey/DarkSlateGrey/2F4F4F/47,79,79',
+      'darkturquoise/DarkTurquoise/00CED1/0,206,209',
+      'darkviolet/DarkViolet/9400D3/148,0,211',
+      'deeppink/DeepPink/FF1493/255,20,147',
+      'deepskyblue/DeepSkyBlue/00BFFF/0,191,255',
+      'dimgray/DimGray/696969/105,105,105',
+      'dimgrey/DimGrey/696969/105,105,105',
+      'dodgerblue/DodgerBlue/1E90FF/30,144,255',
+      'firebrick/Firebrick/B22222/178,34,34',
+      'floralwhite/FloralWhite/FFFAF0/255,250,240',
+      'forestgreen/ForestGreen/228B22/34,139,34',
+      'fuchsia/Fuchsia/FF00FF/255,0,255',
+      'gainsboro/Gainsboro/DCDCDC/220,220,220',
+      'ghostwhite/GhostWhite/F8F8FF/248,248,255',
+      'gold/Gold/FFD700/255,215,0',
+      'goldenrod/Goldenrod/DAA520/218,165,32',
+      'gray/Gray/808080/128,128,128',
+      'green/Green/008000/0,128,0',
+      'greenyellow/GreenYellow/ADFF2F/173,255,47',
+      'grey/Grey/808080/128,128,128',
+      'honeydew/Honeydew/F0FFF0/240,255,240',
+      'hotpink/HotPink/FF69B4/255,105,180',
+      'indianred/IndianRed/CD5C5C/205,92,92',
+      'indigo/Indigo/4B0082/75,0,130',
+      'ivory/Ivory/FFFFF0/255,255,240',
+      'khaki/Khaki/F0E68C/240,230,140',
+      'lavender/Lavender/E6E6FA/230,230,250',
+      'lavenderblush/LavenderBlush/FFF0F5/255,240,245',
+      'lawngreen/LawnGreen/7CFC00/124,252,0',
+      'lemonchiffon/LemonChiffon/FFFACD/255,250,205',
+      'lightblue/LightBlue/ADD8E6/173,216,230',
+      'lightcoral/LightCoral/F08080/240,128,128',
+      'lightcyan/LightCyan/E0FFFF/224,255,255',
+      'lightgoldenrodyellow/LightGoldenrodYellow/FAFAD2/250,250,210',
+      'lightgray/LightGray/D3D3D3/211,211,211',
+      'lightgreen/LightGreen/90EE90/144,238,144',
+      'lightgrey/LightGrey/D3D3D3/211,211,211',
+      'lightpink/LightPink/FFB6C1/255,182,193',
+      'lightsalmon/LightSalmon/FFA07A/255,160,122',
+      'lightseagreen/LightSeaGreen/20B2AA/32,178,170',
+      'lightskyblue/LightSkyBlue/87CEFA/135,206,250',
+      'lightslategray/LightSlateGray/778899/119,136,153',
+      'lightslategrey/LightSlateGrey/778899/119,136,153',
+      'lightsteelblue/LightSteelBlue/B0C4DE/176,196,222',
+      'lightyellow/LightYellow/FFFFE0/255,255,224',
+      'lime/Lime/00FF00/0,255,0',
+      'limegreen/LimeGreen/32CD32/50,205,50',
+      'linen/Linen/FAF0E6/250,240,230',
+      'magenta/Magenta/FF00FF/255,0,255',
+      'maroon/Maroon/800000/128,0,0',
+      'mediumaquamarine/MediumAquamarine/66CDAA/102,205,170',
+      'mediumblue/MediumBlue/0000CD/0,0,205',
+      'mediumorchid/MediumOrchid/BA55D3/186,85,211',
+      'mediumpurple/MediumPurple/9370DB/147,112,219',
+      'mediumseagreen/MediumSeaGreen/3CB371/60,179,113',
+      'mediumslateblue/MediumSlateBlue/7B68EE/123,104,238',
+      'mediumspringgreen/MediumSpringGreen/00FA9A/0,250,154',
+      'mediumturquoise/MediumTurquoise/48D1CC/72,209,204',
+      'mediumvioletred/MediumVioletRed/C71585/199,21,133',
+      'midnightblue/MidnightBlue/191970/25,25,112',
+      'mintcream/MintCream/F5FFFA/245,255,250',
+      'mistyrose/MistyRose/FFE4E1/255,228,225',
+      'moccasin/Moccasin/FFE4B5/255,228,181',
+      'navajowhite/NavajoWhite/FFDEAD/255,222,173',
+      'navy/Navy/000080/0,0,128',
+      'oldlace/OldLace/FDF5E6/253,245,230',
+      'olive/Olive/808000/128,128,0',
+      'olivedrab/OliveDrab/6B8E23/107,142,35',
+      'orange/Orange/FFA500/255,165,0',
+      'orangered/OrangeRed/FF4500/255,69,0',
+      'orchid/Orchid/DA70D6/218,112,214',
+      'palegoldenrod/PaleGoldenrod/EEE8AA/238,232,170',
+      'palegreen/PaleGreen/98FB98/152,251,152',
+      'paleturquoise/PaleTurquoise/AFEEEE/175,238,238',
+      'palevioletred/PaleVioletRed/DB7093/219,112,147',
+      'papayawhip/PapayaWhip/FFEFD5/255,239,213',
+      'peachpuff/PeachPuff/FFDAB9/255,218,185',
+      'peru/Peru/CD853F/205,133,63',
+      'pink/Pink/FFC0CB/255,192,203',
+      'plum/Plum/DDA0DD/221,160,221',
+      'powderblue/PowderBlue/B0E0E6/176,224,230',
+      'purple/Purple/800080/128,0,128',
+      'red/Red/FF0000/255,0,0',
+      'rosybrown/RosyBrown/BC8F8F/188,143,143',
+      'royalblue/RoyalBlue/4169E1/65,105,225',
+      'saddlebrown/SaddleBrown/8B4513/139,69,19',
+      'salmon/Salmon/FA8072/250,128,114',
+      'sandybrown/SandyBrown/F4A460/244,164,96',
+      'seagreen/SeaGreen/2E8B57/46,139,87',
+      'seashell/Seashell/FFF5EE/255,245,238',
+      'sienna/Sienna/A0522D/160,82,45',
+      'silver/Silver/C0C0C0/192,192,192',
+      'skyblue/SkyBlue/87CEEB/135,206,235',
+      'slateblue/SlateBlue/6A5ACD/106,90,205',
+      'slategray/SlateGray/708090/112,128,144',
+      'slategrey/SlateGrey/708090/112,128,144',
+      'snow/Snow/FFFAFA/255,250,250',
+      'springgreen/SpringGreen/00FF7F/0,255,127',
+      'steelblue/SteelBlue/4682B4/70,130,180',
+      'tan/Tan/D2B48C/210,180,140',
+      'teal/Teal/008080/0,128,128',
+      'thistle/Thistle/D8BFD8/216,191,216',
+      'tomato/Tomato/FF6347/255,99,71',
+      'turquoise/Turquoise/40E0D0/64,224,208',
+      'violet/Violet/EE82EE/238,130,238',
+      'wheat/Wheat/F5DEB3/245,222,179',
+      'white/White/FFFFFF/255,255,255',
+      'whitesmoke/WhiteSmoke/F5F5F5/245,245,245',
+      'yellow/Yellow/FFFF00/255,255,0',
+      'yellowgreen/YellowGreen/9ACD32/154,205,50'
+    ]
+    const colorInfoList = []
+
+    let canvas
+    let ctx
+
+    let linePoint
+    let scale = 1
+    let sx = 50
+    let sy = 30
+    let isDrawingPOrder = true
+    let pColor = 'blue'
+    let checkColor = 'red'
+    let checkedInfo = {
+      shpI: -1,
+      div: null,
+      shp: null,
+      list: []
+    }
+
+    function init() {
+      const container = document.getElementById('id-container')
+      canvas = document.getElementById('id-canvas')
+      canvas.width = container.offsetWidth - 16
+      canvas.height = container.offsetHeight - 16 * 3
+      canvas.style.border = 'solid 1px'
+      ctx = canvas.getContext('2d')
+      const rangeScale = document.getElementById('id-input-range-scale')
+      rangeScale.addEventListener('change', () => {
+        const input = document.getElementById('id-input-scale')
+        input.value = rangeScale.value
+        scale = Number(rangeScale.value)
+        console.log(scale)
+        draw()
+      })
+      const inputPOrder = document.getElementById('id-input-is-drawing-p-order')
+      inputPOrder.addEventListener('change', () => {
+        isDrawingPOrder = inputPOrder.checked
+        draw()
+      })
+
+      initColorInfoList()
+      makePalette()
+    }
+
+    // 'aliceblue/AliceBlue/F0F8FF/240,248,255',
+    function initColorInfoList() {
+      for (const cst of colorSetList) {
+        const cstSplit = cst.split('/')
+        const code = cstSplit[0]
+        const name = cstSplit[1]
+        const hex = cstSplit[2]
+        const rgb = cstSplit[3].split(',')
+        colorInfoList.push({
+          code: code,
+          name: name,
+          hex: hex,
+          r: Number(rgb[0]),
+          g: Number(rgb[1]),
+          b: Number(rgb[2])
+        })
+      }
+    }
+
+    function makePalette() {
+      const container = document.getElementById('id-palette')
+      for (const c of colorInfoList) {
+        const div = document.createElement('div')
+        // const codeLDv = createLabelDiv(c.code)
+        const iRGB = invertRGB(c.r, c.g, c.b)
+        const color = `rgb(${iRGB.r},${iRGB.g},${iRGB.b})`
+        const nameLDv = createLabelDiv(c.name, color)
+        const hexLDv = createLabelDiv(c.hex, color)
+        const rgbLDv = createLabelDiv(`${c.r},${c.g},${c.b}`, color)
+        // div.appendChild(codeLDv)
+        div.appendChild(nameLDv)
+        div.appendChild(hexLDv)
+        div.appendChild(rgbLDv)
+        div.style.backgroundColor = c.code
+        div.style.margin = '4px'
+        container.appendChild(div)
+        div.addEventListener('click', () => {
+          navigator.clipboard.writeText(c.name)
+          const label = document.getElementById('id-label-copied-color')
+          label.innerText = `copied: ${c.name}`
+          console.log(`copied: ${c.name}`)
+          if (checkedInfo.div) {
+            // const widthInput = document.getElementById(`id-input-shp-${checkedInfo.shpI}-width`)
+            const colorInput = document.getElementById(`id-input-shp-${checkedInfo.shpI}-color`)
+            colorInput.value = c.name
+            checkedInfo.shp.color = c.name
+            draw()
+          }
+        })
+      }
+    }
+
+    function createLabelDiv(txt, color) {
+      const div = document.createElement('div')
+      const label = document.createElement('label')
+      label.innerText = txt
+      label.style.margin = '4px'
+      label.style.color = color
+      div.appendChild(label)
+      return div
+    }
+
+    function invertRGB(r, g, b) {
+      // const ir = 255 - r
+      // const ig = 255 - g
+      // const ib = 255 - b
+      // return { r: ir, g: ig, b: ib }
+      return { r: calcColor(r), g: calcColor(g), b: calcColor(b) }
+    }
+
+    function calcColor(c) {
+      let result = c
+      if (c > 128) {
+        result -= 120
+      } else {
+        result += 120
+      }
+      return result
+    }
+
+    function loadLine() {
+      const input = document.getElementById('id-input-line-ucode')
+      const uCode = input.value
+      if (uCode.length < 1) return
+      const request = new Request(`/str-set/line-set/${uCode}`)
+      fetch(request).then((response) => response.json()).then((json) => {
+        console.log(json)
+        if (json.code === 'str') {
+          const lineSet = json.str
+          const line = createSimpleLineInfo(lineSet)
+          linePoint = createLinePointFromLineInfo(line)
+          linePoint.origin = line
+          console.log(linePoint)
+
+          checkedInfo.shpI = -1
+          checkedInfo.div = null
+          checkedInfo.shp = null
+          checkedInfo.list = []
+          const shpContainer = document.getElementById('id-shp-container')
+          shpContainer.innerHTML = ''
+          for (const shp of linePoint.list) {
+            const div = createShpDiv(shp)
+            checkedInfo.list.push(div)
+            shpContainer.appendChild(div)
+          }
+
+          draw()
+        }
+      })
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+      const scSx = sx / scale
+      const scSy = sy / scale
+
+      if (linePoint.list.length > 0) drawLineInfo(ctx, linePoint, scSx, scSy, false, false, scale)
+
+      if (!isDrawingPOrder) return
+      const pList = linePoint.pointInfo.list
+      for (const p of pList) {
+        let color = pColor
+        if (checkedInfo.shp) {
+          const i = checkedInfo.shp.list.indexOf(p)
+          if (i >= 0) color = checkColor
+        }
+        drawIndexCircle(ctx, p.i, p.x + scSx, p.y + scSy, color, scale)
+      }
+    }
+
+    function changeScale() {
+      const input = document.getElementById('id-input-scale')
+      const inputRange = document.getElementById('id-input-range-scale')
+      scale = Number(input.value)
+      inputRange.value = input.value
+      draw()
+    }
+
+    function createShpDiv(shp) {
+      const index = checkedInfo.list.length
+      let pOrder = `[${index}] line: `
+      let isFirst = true
+      for (const p of shp.list) {
+        if (isFirst) {
+          isFirst = false
+          pOrder += `(${p.i})`
+        } else {
+          pOrder += `-(${p.i})`
+        }
+      }
+      const lDiv = createLabelDiv(pOrder, 'black')
+      lDiv.style.margin = '4px'
+      const div = document.createElement('div')
+      div.appendChild(lDiv)
+      const widthLDiv = createLabelDiv('width: ', 'black')
+      widthLDiv.style.margin = '4px'
+      const widthInput = document.createElement('input')
+      widthInput.id = `id-input-shp-${index}-width`
+      widthInput.type = 'number'
+      widthInput.value = `${shp.width}`
+      widthLDiv.appendChild(widthInput)
+      const colorLDiv = createLabelDiv('color: ', 'black')
+      colorLDiv.style.margin = '4px'
+      const colorInput = document.createElement('input')
+      colorInput.id = `id-input-shp-${index}-color`
+      colorInput.type = 'text'
+      colorInput.value = shp.color
+      colorLDiv.appendChild(colorInput)
+      const colorClearBtn = document.createElement('button')
+      colorClearBtn.style.margin = '2px'
+      colorClearBtn.innerText = 'X'
+      colorClearBtn.addEventListener('click', () => {
+        colorInput.value = ''
+      })
+      colorLDiv.appendChild(colorClearBtn)
+      div.appendChild(widthLDiv)
+      div.appendChild(colorLDiv)
+      const button = document.createElement('button')
+      button.innerText = 'change'
+      button.onclick = () => {
+        shp.width = Number(widthInput.value)
+        shp.color = colorInput.value
+        draw()
+      }
+      button.style.margin = '4px'
+      div.appendChild(button)
+      div.style.margin = '4px'
+      div.style.border = 'solid 1px'
+      div.addEventListener('click', () => {
+        if (checkedInfo.div && checkedInfo.div !== div) {
+          checkedInfo.div.checked = false
+          checkedInfo.div.style.backgroundColor = ''
+          checkedInfo.div = null
+          checkedInfo.shp = null
+        }
+        // div.checked = !div.checked
+        // if (div.checked) {
+        //   div.style.backgroundColor = checkColor
+        //   checkedInfo.div = div
+        //   checkedInfo.shp = shp
+        // } else {
+        //   div.style.backgroundColor = ''
+        //   checkedInfo.div = null
+        //   checkedInfo.shp = null
+        // }
+        div.checked = true
+        div.style.backgroundColor = checkColor
+        checkedInfo.div = div
+        checkedInfo.shp = shp
+        checkedInfo.shpI = checkedInfo.list.indexOf(div)
+        draw()
+      })
+      return div
+    }
+
+    function changePColor() {
+      const input = document.getElementById('id-input-point-color')
+      const color = input.value
+      if (color.length > 0) pColor = color
+
+      const inputCheck = document.getElementById('id-input-check-color')
+      const checkC = inputCheck.value
+      if (checkC.length > 0) checkColor = checkC
+
+      draw()
+    }
+
+    function clearShpI() {
+      const input = document.getElementById('id-input-shp-i')
+      input.value = ''
+      checkedInfo.shpI = -1
+      if (checkedInfo.div) {
+        checkedInfo.div.checked = false
+        checkedInfo.div.style.backgroundColor = ''
+      }
+      checkedInfo.div = null
+      checkedInfo.shp = null
+      draw()
+    }
+
+    function changeInputShpI(i) {
+      const input = document.getElementById('id-input-shp-i')
+      input.value = i
+      if (i < 0 || i >= checkedInfo.list.length) input.value = ''
+    }
+
+    function changeShpI() {
+      const input = document.getElementById('id-input-shp-i')
+      const i = Number(input.value)
+      if (i < 0 || i >= checkedInfo.list.length) {
+        input.value = ''
+        return
+      }
+      checkedInfo.shpI = i
+      updateCheckedInfo()
+    }
+
+    function nextShpI() {
+      checkedInfo.shpI++
+      if (checkedInfo.shpI >= checkedInfo.list.length) checkedInfo.shpI = 0
+      changeInputShpI(checkedInfo.shpI)
+      updateCheckedInfo()
+    }
+
+    function prevShpI() {
+      checkedInfo.shpI--
+      if (checkedInfo.shpI < 0) checkedInfo.shpI = checkedInfo.list.length - 1
+      changeInputShpI(checkedInfo.shpI)
+      updateCheckedInfo()
+    }
+
+    function updateCheckedInfo() {
+      if (checkedInfo.div) {
+        checkedInfo.div.checked = false
+        checkedInfo.div.style.backgroundColor = ''
+      }
+      checkedInfo.shp = null
+      checkedInfo.div = null
+      if (checkedInfo.shpI < 0 || checkedInfo.shpI >= checkedInfo.list.length) {
+        checkedInfo.shpI = -1
+        changeInputShpI(-1)
+        return
+      }
+      checkedInfo.div = checkedInfo.list[checkedInfo.shpI]
+      checkedInfo.shp = linePoint.list[checkedInfo.shpI]
+      checkedInfo.div.checked = true
+      checkedInfo.div.style.backgroundColor = checkColor
+      draw()
+    }
+
+    function changeCanvasColor() {
+      const input = document.getElementById('id-input-canvas-color')
+      canvas.style.backgroundColor = input.value
+    }
+
+    function clearInput(id) {
+      const input = document.getElementById(id)
+      input.value = ''
+    }
+
+    function print() {
+      const colorInfo = {
+        uCode: `color-${getCurrentDateUCode()}`,
+        lineUCode: linePoint.origin.uCode,
+        list: []
+      }
+      for (const shp of linePoint.list) colorInfo.list.push({ width: shp.width, color: shp.color })
+      const colorSet = createColorSet(colorInfo)
+      console.log(colorSet)
+    }
+
+    function save() {
+      const colorInfo = {
+        uCode: `color-${getCurrentDateUCode()}`,
+        lineUCode: linePoint.origin.uCode,
+        list: []
+      }
+      for (const shp of linePoint.list) colorInfo.list.push({ width: shp.width, color: shp.color })
+      const colorSet = createColorSet(colorInfo)
+      saveString(colorInfo.uCode, colorSet)
+    }
+
+    function saveToServer() {
+      const colorInfo = {
+        uCode: `color-${getCurrentDateUCode()}`,
+        lineUCode: linePoint.origin.uCode,
+        list: []
+      }
+      for (const shp of linePoint.list) colorInfo.list.push({ width: shp.width, color: shp.color })
+      const colorSet = createColorSet(colorInfo)
+      const obj = {
+        uCode: colorInfo.uCode,
+        str: colorSet,
+        type: 'coloring',
+        dsg: '',
+        memo0: `line`,
+        memo1: '',
+        memo2: '',
+      }
+      const label = document.getElementById('id-label-result')
+      postStrSet(obj, label)
+    }
+
+    // const obj = {
+    //   uCode: '',
+    //   str: '',
+    //   type: '',
+    //   dsg: '',
+    //   memo0: '',
+    //   memo1: '',
+    //   memo2: '',
+    // }
+    function postStrSet(obj, label) {
+      const request = new Request('/str-set/add-str', {
+        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', body: JSON.stringify(obj)
+      })
+      fetch(request).then(response => {
+        return response.json()
+      }).then(result => {
+        console.log(result)
+        const str = `${obj.type}: ${result.code}`
+        label.innerText = `${label.innerText}, ${str}`
+      })
+    }
+  </script>
+</body>
+</html>

@@ -173,9 +173,29 @@ function getColoringAndLinePoint(callback) {
       callback(result)
     }
   })
-
 }
 exports.getColoringAndLinePoint = getColoringAndLinePoint
+
+function getColoringAndLine(callback) {
+  const coloringInfo = {
+    params: ['coloring', 'line'],
+    where: 'type = ? AND memo0 = ?'
+  }
+  getStrSetList(coloringInfo, (result) => {
+    if (result.code === 'list') {
+      getLineSetList((rst) => {
+        if (rst.code === 'list') {
+          callback({ code: 'list', lineList: rst.list, colorList: result.list })
+        } else {
+          callback(rst)
+        }
+      })
+    } else {
+      callback(result)
+    }
+  })
+}
+exports.getColoringAndLine = getColoringAndLine
 
 function getLineStrSet(uCode, callback) {
   const info = {

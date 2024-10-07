@@ -51,6 +51,12 @@ router.get('/coloring-line-point-set-list', (req, res) => {
   })
 })
 
+router.get('/coloring-line-set-list', (req, res) => {
+  strSetManager.getColoringAndLine((result) => {
+    res.send(JSON.stringify(result))
+  })
+})
+
 router.get('/place-line-set-list', (req, res) => {
   strSetManager.getPlaceLineSetList((result) => {
     res.send(JSON.stringify(result))
