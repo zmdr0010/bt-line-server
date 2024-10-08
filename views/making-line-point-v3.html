@@ -163,8 +163,8 @@
 
     let canvas
     let ctx
-    let sx = 100
-    let sy = 100
+    let sx = 50
+    let sy = 50
     let linePointInfo
     let selectPI = 0
     let resultInfo
@@ -260,6 +260,19 @@
       ctx.strokeStyle = 'gray'
       ctx.lineWidth = 1
       ctx.strokeRect(sx, sy, 1000, 1000)
+
+      for (let i=0; i<9; i++) {
+        const itvX = 100 * (i + 1)
+        ctx.moveTo(sx + itvX, sy)
+        ctx.lineTo(sx + itvX, sy + 800)
+      }
+      ctx.stroke()
+      for (let i=0; i<8; i++) {
+        const itvY = 100 * (i + 1)
+        ctx.moveTo(sx, sy + itvY)
+        ctx.lineTo(sx + 1000, sy + itvY)
+      }
+      ctx.stroke()
 
       const scSx = sx / scale
       const scSy = sy / scale
