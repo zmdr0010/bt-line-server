@@ -109,8 +109,8 @@
       <h5>print [ p ], save [ s ], change mode [ \ ]</h5>
       <h5>next point [ ] ], prev point [ [ ], next shp [ = ] prev shp [ - ]</h5>
       <h5>add [ Enter ] (by focus: add point / add shape)</h5>
-      <h5>focus add point [ q ], focus add shape [ a ]</h5>
-      <h5>pop point [ ` ]</h5>
+      <h5>focus add point [ q ], focus add shape [ a ], focus pointI [ o ]</h5>
+      <h5>pop point [ ` ], isShape [ i ]</h5>
     </div>
   </div>
   <div class="main" id="id-main">
@@ -158,6 +158,8 @@
     let keyPopPoint = '`'
     let keyFocusAddPoint = 'q'
     let keyFocusAddShape = 'a'
+    let keyFocusPointI = 'o'
+    let keyIsShape = 'i'
 
     let canvas
     let ctx
@@ -303,8 +305,10 @@
     function add() {
       const inputAddPoint = document.getElementById('id-input-add-point')
       const inputAddShape = document.getElementById('id-input-add-shape')
+      const inputSelectPI = document.getElementById('id-input-select-point-i')
       if (document.activeElement === inputAddPoint) addPoint()
       if (document.activeElement === inputAddShape) addShape()
+      if (document.activeElement === inputSelectPI) selectPointI()
     }
 
     function addShape() {
@@ -408,6 +412,8 @@
       if (e.key === keyFocusAddShape) focusElement('id-input-add-shape')
       if (e.shiftKey && e.key.toLowerCase() === keyFocusAddPoint) clearInput('id-input-add-point')
       if (e.shiftKey && e.key.toLowerCase() === keyFocusAddShape) clearInput('id-input-add-shape')
+      if (e.key === keyFocusPointI) focusElement('id-input-select-point-i')
+      if (e.key === keyIsShape) changeIsShape()
     }
 
     function move(dx, dy) {
@@ -415,6 +421,10 @@
       if (!selectedP) return
       selectedP.x += dx * itvX
       selectedP.y += dy * itvY
+      const inputX = document.getElementById('id-input-point-x')
+      const inputY = document.getElementById('id-input-point-y')
+      inputX.value = selectedP.x
+      inputY.value = selectedP.y
       updateResultInfo()
       draw()
     }
@@ -729,6 +739,11 @@
     function focusElement(id) {
       const e = document.getElementById(id)
       e.focus()
+    }
+
+    function changeIsShape() {
+      const input = document.getElementById('id-input-is-shape')
+      input.checked = !input.checked
     }
   </script>
 </body>
