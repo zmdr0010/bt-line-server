@@ -37,6 +37,7 @@
         line uCode: <input id="id-input-line-ucode" type="text" />
         <button onclick="clearInput('id-input-line-ucode')">X</button>
         <button onclick="loadLine()">load line</button>
+        <button onclick="loadToGuide()">load to guide</button>
       </div>
       <div style="margin: 16px">
         color uCode: <input id="id-input-color-ucode" type="text" />
@@ -102,6 +103,17 @@
       <div style="margin: 16px">
         preview scale: <input id="id-input-preview-scale" type="number" value="1.0" />
         <button onclick="changePreviewScale()">change preview scale</button>
+      </div>
+    </div>
+    <div style="margin: 4px; border: solid 1px">
+      <div style="margin: 2px">
+        <div style="margin: 16px">
+          x: <input id="id-input-guide-x" type="number" value="200" />
+          y: <input id="id-input-guide-y" type="number" value="200" />
+        </div>
+        <div style="margin: 16px">
+          <button onclick="moveGuide()">move guide</button>
+        </div>
       </div>
     </div>
     <div style="margin: 4px">
@@ -184,6 +196,9 @@
     let previewCanvas
     let previewCtx
     let previewScale = 1
+    let guideLine
+    let guideX = 200
+    let guideY = 200
 
     function init() {
       canvas = document.getElementById('id-canvas')
@@ -273,6 +288,8 @@
         ctx.lineTo(sx + 1000, sy + itvY)
       }
       ctx.stroke()
+
+      if (guideLine) drawLineInfo(ctx, guideLine, guideX/scale, guideY/scale, false, false, scale)
 
       const scSx = sx / scale
       const scSy = sy / scale
@@ -757,6 +774,36 @@
     function changeIsShape() {
       const input = document.getElementById('id-input-is-shape')
       input.checked = !input.checked
+    }
+
+    function loadToGuide() {
+      const input = document.getElementById('id-input-line-ucode')
+      const uCode = input.value
+      if (uCode.length < 1) return
+
+      const request = new Request(`/str-set/line-set/${uCode}`)
+      fetch(request).then((response) => response.json()).then((json) => {
+        console.log(json)
+        if (json.code === 'str') {
+          const strSet = json.str
+          guideLine = createSimpleLineInfo(strSet)
+
+          for (const shp of guideLine.list) {
+            shp.width = 1
+            shp.color = 'lightgray'
+          }
+          draw()
+        }
+      })
+    }
+
+    function moveGuide() {
+      if (!guideLine) return
+      const inputX = document.getElementById('id-input-guide-x')
+      const inputY = document.getElementById('id-input-guide-y')
+      guideX = Number(inputX.value)
+      guideY = Number(inputY.value)
+      draw()
     }
   </script>
 </body>
