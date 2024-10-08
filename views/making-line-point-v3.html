@@ -35,12 +35,12 @@
     <div style="margin: 4px; border: solid 1px">
       <div style="margin: 16px">
         line uCode: <input id="id-input-line-ucode" type="text" />
-        <button onclick="clearLineUCode()">X</button>
+        <button onclick="clearInput('id-input-line-ucode')">X</button>
         <button onclick="loadLine()">load line</button>
       </div>
       <div style="margin: 16px">
         color uCode: <input id="id-input-color-ucode" type="text" />
-        <button onclick="clearColorUCode()">X</button>
+        <button onclick="clearInput('id-input-color-ucode')">X</button>
         <button onclick="loadColor()">load color</button>
       </div>
     </div>
@@ -105,18 +105,24 @@
       </div>
     </div>
     <div style="margin: 4px">
-      <h3>keyboard</h3>
-      <h4>left [ b ], right [ m ], up [ h ], down [ n ]</h4>
-      <h4>print [ p ], save [ s ]</h4>
-      <h4>next point [ ] ], prev point [ [ ], next shp [ = ] prev shp [ - ]</h4>
-      <h4>change mode [ \ ], add shp [ Enter ]</h4>
+      <h5>left [ b ], right [ m ], up [ h ], down [ n ]</h5>
+      <h5>print [ p ], save [ s ], change mode [ \ ]</h5>
+      <h5>next point [ ] ], prev point [ [ ], next shp [ = ] prev shp [ - ]</h5>
+      <h5>add [ Enter ] (by focus: add point / add shape)</h5>
+      <h5>focus add point [ q ], focus add shape [ a ]</h5>
+      <h5>pop point [ ` ]</h5>
     </div>
   </div>
   <div class="main" id="id-main">
     <div style="margin: 8px">
+      point: <input id="id-input-add-point" type="text" />
+      <button onclick="addPoint()">add point</button>
+      <button onclick="clearInput('id-input-add-point')">X</button>
+    </div>
+    <div style="margin: 8px">
       shape(i order): <input id="id-input-add-shape" type="text" />
       <button onclick="addShape()">add shape</button>
-      <button onclick="clearInputAddShape()">X</button>
+      <button onclick="clearInput('id-input-add-shape')">X</button>
       isShape: <input id="id-input-is-shape" type="checkbox" checked />
       <button style="margin: 4px" onclick="print()">print</button>
       <button style="margin: 4px" onclick="save()">save to file</button>
@@ -126,7 +132,7 @@
       <button style="margin: 4px" onclick="saveToServer()">save to server</button>
       <label id="id-label-post-result">post result</label>
     </div>
-    <div style="margin: 8px"><canvas id="id-canvas"></canvas></div>
+    <div style="margin: 8px; border: solid 1px"><canvas id="id-canvas"></canvas></div>
   </div>
   <div class="preview" id="id-preview">
     <canvas id="id-preview-canvas"></canvas>
@@ -148,7 +154,10 @@
     let keyNextShp = '='
     let keyPrevShp = '-'
     let keyChangeMode = '\\'
-    let keyAddShp = 'Enter'
+    let keyAdd = 'Enter'
+    let keyPopPoint = '`'
+    let keyFocusAddPoint = 'q'
+    let keyFocusAddShape = 'a'
 
     let canvas
     let ctx
@@ -176,8 +185,8 @@
 
     function init() {
       canvas = document.getElementById('id-canvas')
-      canvas.width = window.innerWidth - 16 - 16
-      canvas.height = window.innerHeight - 16 - 16
+      canvas.width = window.innerWidth - 16 * 2
+      canvas.height = window.innerHeight - 16 * 10
       ctx = canvas.getContext('2d')
       preview = document.getElementById('id-preview')
       previewCanvas = document.getElementById('id-preview-canvas')
@@ -291,6 +300,13 @@
       saveString(colorInfo.uCode, colorSet)
     }
 
+    function add() {
+      const inputAddPoint = document.getElementById('id-input-add-point')
+      const inputAddShape = document.getElementById('id-input-add-shape')
+      if (document.activeElement === inputAddPoint) addPoint()
+      if (document.activeElement === inputAddShape) addShape()
+    }
+
     function addShape() {
       const input = document.getElementById('id-input-add-shape')
       const inputIsShape = document.getElementById('id-input-is-shape')
@@ -320,9 +336,22 @@
       draw()
     }
 
-    function clearInputAddShape() {
-      const input = document.getElementById('id-input-add-shape')
+    function addPoint() {
+      const input = document.getElementById('id-input-add-point')
+      const addingPStr = input.value
       input.value = ''
+      console.log(addingPStr)
+      if (addingPStr.length < 1) return
+      const split = addingPStr.split(',')
+      for (let i=0; i<split.length; i+=2) {
+        const x = Number(split[i])
+        const y = Number(split[i+1])
+        const pList = linePointInfo.pointInfo.list
+        const p = pList.find(p => p.x === x && p.y === y)
+        if (!p) pList.push({ i: pList.length, x: x, y: y })
+        if (pList.length === 1) updatePointInput()
+        draw()
+      }
     }
 
     function selectPointI() {
@@ -373,7 +402,12 @@
       if (e.key === keyNextShp) nextShp()
       if (e.key === keyPrevShp) prevShp()
       if (e.key === keyChangeMode) changeMode()
-      if (e.key === keyAddShp) addShape()
+      if (e.key === keyAdd) add()
+      if (e.key === keyPopPoint) popPoint()
+      if (e.key === keyFocusAddPoint) focusElement('id-input-add-point')
+      if (e.key === keyFocusAddShape) focusElement('id-input-add-shape')
+      if (e.shiftKey && e.key.toLowerCase() === keyFocusAddPoint) clearInput('id-input-add-point')
+      if (e.shiftKey && e.key.toLowerCase() === keyFocusAddShape) clearInput('id-input-add-shape')
     }
 
     function move(dx, dy) {
@@ -625,11 +659,6 @@
       })
     }
 
-    function clearLineUCode() {
-      const input = document.getElementById('id-input-line-ucode')
-      input.value = ''
-    }
-
     function loadColor() {
       const input = document.getElementById('id-input-color-ucode')
       const uCode = input.value
@@ -672,11 +701,6 @@
       })
     }
 
-    function clearColorUCode() {
-      const input = document.getElementById('id-input-color-ucode')
-      input.value = ''
-    }
-
     function changeScale() {
       const input = document.getElementById('id-input-scale')
       const inputRange = document.getElementById('id-input-range-scale')
@@ -695,6 +719,16 @@
       previewScale = scale
       const input = document.getElementById('id-input-preview-scale')
       input.value = scale
+    }
+
+    function clearInput(id) {
+      const input = document.getElementById(id)
+      input.value = ''
+    }
+
+    function focusElement(id) {
+      const e = document.getElementById(id)
+      e.focus()
     }
   </script>
 </body>
