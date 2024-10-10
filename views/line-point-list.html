@@ -58,6 +58,7 @@
     let isOnCircle = false
 
     function init() {
+      document.body.style.backgroundColor = 'lightblue'
       const urlPrm = new URLSearchParams(window.location.search)
       const prmIsOnBound = urlPrm.get('isOnBound')
       const prmIsOnCircle = urlPrm.get('isOnCircle')
