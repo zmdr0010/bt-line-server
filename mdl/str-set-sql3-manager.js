@@ -137,6 +137,15 @@ function getLineSetList(callback) {
 }
 exports.getLineSetList = getLineSetList
 
+function getLineSetListByMemo1(callback, memo1) {
+  const info = {
+    params: ['line', memo1],
+    where: 'type = ? AND memo1 = ?'
+  }
+  getStrSetList(info, callback)
+}
+exports.getLineSetListByMemo1 = getLineSetListByMemo1
+
 function getLinePointSetList(callback) {
   const info = {
     params: ['line-point'],

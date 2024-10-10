@@ -39,6 +39,12 @@ router.get('/line-set-list', (req, res) => {
   })
 })
 
+router.get('/line-set-list/:memo1', (req, res) => {
+  strSetManager.getLineSetListByMemo1((result) => {
+    res.send(JSON.stringify(result))
+  }, req.params.memo1)
+})
+
 router.get('/line-point-set-list', (req, res) => {
   strSetManager.getLinePointSetList((result) => {
     res.send(JSON.stringify(result))

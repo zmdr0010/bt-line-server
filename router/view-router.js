@@ -14,6 +14,10 @@ router.get('/line-list', (req, res) => {
   res.render('line-list.html')
 })
 
+router.get('/line-list-memo1', (req, res) => {
+  res.render('line-list-memo1.html')
+})
+
 router.get('/making-line-point', (req, res) => {
   res.render('making-line-point.html')
 })
