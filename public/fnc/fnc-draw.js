@@ -108,7 +108,7 @@ function drawArea(ctx, w, h, sx, sy, color='black') {
 function drawPart(ctx, partInfo, x, y, isOnBound=false, isOnCircle=false) {
   const sx = partInfo.x + x
   const sy = partInfo.y + y
-  if (partInfo.drwLineInfo) {
+  if (partInfo.lineInfo) {
     drawLineInfo(ctx, partInfo.lineInfo, sx, sy, isOnBound, isOnCircle)
   }
   const child = partInfo.child
