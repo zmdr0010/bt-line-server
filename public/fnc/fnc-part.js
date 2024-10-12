@@ -117,3 +117,90 @@ function moveAutoJoin(partInfo, calcJrcInfo, topTCode, leftTCode) {
   partInfo.h = 0
   calculatePartSize(partInfo)
 }
+
+function createDevicePart(deviceSet, lineSetList) {
+  const calcJrc = {
+    uCode: `calc-jrc-${deviceSet.uCode}`,
+    list: structuredClone(deviceSet.calcJrcInfo.list)
+  }
+  const part = {
+    uCode: deviceSet.uCode,
+    w: 100,
+    h: 100,
+    x: 0,
+    y: 0,
+    tCode: deviceSet.tCode,
+    lineInfo: null,
+    child: []
+  }
+
+  for (const c of deviceSet.child) {
+    console.log(c.tCode)
+    for (const jrc of c.jrcInfo.list) {
+      const oJrc = calcJrc.list.find(j => j.target === jrc.target && j.key === jrc.key)
+      oJrc.scx = jrc.scx
+      oJrc.scy = jrc.scy
+    }
+    const lineSet = lineSetList.find(s => s.split('/')[0] === c.lineUCode)
+    let cLine = createSimpleLineInfo(lineSet)
+    if (c.transInfo) {
+      for (const tr of c.transInfo.list) {
+        if (tr.type === 'scale') {
+          cLine = createScaledLineInfo(cLine, tr.scaleX, tr.scaleY)
+        }
+        if (tr.type === 'rotate') {
+          cLine = createRotateLineInfo(cLine, degreeToRadian(tr.degree))
+          fitSimpleLineInfo(cLine)
+        }
+      }
+    }
+    const cPart = createSimplePartInfo(c.uCode, c.tCode, cLine)
+    part.child.push(cPart)
+  }
+  moveAutoJoin(part, calcJrc, deviceSet.calcJrcInfo.top, deviceSet.calcJrcInfo.left)
+
+  return part
+}
+
+function createDeviceGroupPart(groupSet, lineSetList) {
+  const calcJrc = {
+    uCode: `calc-jrc-${groupSet.uCode}`,
+    list: structuredClone(groupSet.calcJrcInfo.list)
+  }
+  console.log(calcJrc)
+  const part = {
+    uCode: groupSet.uCode,
+    w: 100,
+    h: 100,
+    x: 0,
+    y: 0,
+    tCode: groupSet.tCode,
+    lineInfo: null,
+    child: []
+  }
+  for (const deviceSet of groupSet.child) {
+    let p
+    if (deviceSet.type === 'device-group') {
+      p = createDeviceGroupPart(deviceSet, lineSetList)
+    } else { // device
+      p = createDevicePart(deviceSet, lineSetList)
+    }
+    part.child.push(p)
+
+    if (groupSet.childInfo) {
+      const cInfo = groupSet.childInfo.list.find(ci => ci.target === deviceSet.tCode)
+      const jrcInfo = calcJrc.list.find(j => j.target === cInfo.target && j.key === cInfo.key)
+      const cPart = p.child.find(c => c.tCode === cInfo.cTarget)
+      let scx = cPart.x / p.w
+      let scy = cPart.y / p.h
+      if (cInfo.margin) {
+        scx += cInfo.margin.scx
+        scy += cInfo.margin.scy
+      }
+      jrcInfo.scx = scx
+      jrcInfo.scy = scy
+    }
+  }
+  moveAutoJoin(part, calcJrc, groupSet.calcJrcInfo.top, groupSet.calcJrcInfo.left)
+  return part
+}
