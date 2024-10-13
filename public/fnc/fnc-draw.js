@@ -105,14 +105,14 @@ function drawArea(ctx, w, h, sx, sy, color='black') {
   ctx.stroke()
 }
 
-function drawPart(ctx, partInfo, x, y, isOnBound=false, isOnCircle=false) {
+function drawPart(ctx, partInfo, x, y, isOnBound=false, isOnCircle=false, scale=1) {
   const sx = partInfo.x + x
   const sy = partInfo.y + y
   if (partInfo.lineInfo) {
-    drawLineInfo(ctx, partInfo.lineInfo, sx, sy, isOnBound, isOnCircle)
+    drawLineInfo(ctx, partInfo.lineInfo, sx, sy, isOnBound, isOnCircle, scale)
   }
   const child = partInfo.child
   for (const c of child) {
-    drawPart(ctx, c, sx, sy, isOnBound, isOnCircle)
+    drawPart(ctx, c, sx, sy, isOnBound, isOnCircle, scale)
   }
 }
