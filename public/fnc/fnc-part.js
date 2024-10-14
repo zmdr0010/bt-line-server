@@ -192,9 +192,11 @@ function createDeviceGroupPart(groupSet, lineSetList) {
       const cInfo = groupSet.childInfo.list.find(ci => ci.target === deviceSet.tCode)
       const jrcInfo = calcJrc.list.find(j => j.target === cInfo.target && j.key === cInfo.key)
       const cPart = p.child.find(c => c.tCode === cInfo.cTarget)
-      let scx = cPart.x / p.w
-      let scy = cPart.y / p.h
+      let scx = jrcInfo.scx
+      let scy = jrcInfo.scy
       if (cInfo.margin) {
+        scx = cPart.x / p.w
+        scy = cPart.y / p.h
         scx += cInfo.margin.scx
         scy += cInfo.margin.scy
       }
