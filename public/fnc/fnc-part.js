@@ -135,11 +135,12 @@ function createDevicePart(deviceSet, lineSetList) {
   }
 
   for (const c of deviceSet.child) {
-    console.log(c.tCode)
-    for (const jrc of c.jrcInfo.list) {
-      const oJrc = calcJrc.list.find(j => j.target === jrc.target && j.key === jrc.key)
-      oJrc.scx = jrc.scx
-      oJrc.scy = jrc.scy
+    if (c.jrcInfo) {
+      for (const jrc of c.jrcInfo.list) {
+        const oJrc = calcJrc.list.find(j => j.target === jrc.target && j.key === jrc.key)
+        oJrc.scx = jrc.scx
+        oJrc.scy = jrc.scy
+      }
     }
     const lineSet = lineSetList.find(s => s.split('/')[0] === c.lineUCode)
     let cLine = createSimpleLineInfo(lineSet)
