@@ -349,6 +349,14 @@
       const strSplit = str.split(',')
       const shp = { width: 1, color: 'gray', list: [] }
       const pList = linePointInfo.pointInfo.list
+      // check i
+      for (const ist of strSplit) {
+        const i = Number(ist)
+        if (isNaN(i) || i < 0 || i >= pList.length) {
+          console.log(`has not p [${i}]`)
+          return
+        }
+      }
       for (const ist of strSplit) {
         const i = Number(ist)
         shp.list.push(pList[i])
