@@ -62,4 +62,8 @@ router.get('/coloring-line-list', (req, res) => {
   res.render('coloring-line-list.html')
 })
 
+router.get('/preset-bundle-list', (req, res) => {
+  res.render('preset-bundle-list.html')
+})
+
 exports.router = router

@@ -77,4 +77,10 @@ router.get('/line-set/:uCode', (req, res) => {
   })
 })
 
+router.get('/preset-bundle-set-list', (req, res) => {
+  strSetManager.getPresetBundleSetList((result) => {
+    res.send(JSON.stringify(result))
+  })
+})
+
 exports.router = router

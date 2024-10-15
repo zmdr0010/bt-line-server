@@ -7,6 +7,7 @@ let dbPath = ''
 // dsg: designation (str split / -> index item designation)
 // type: line, line-coloring, line-coloring-rgb, line-point, line-part(place merge + coloring)
 //       coloring, coloring-rgb, place-line, palette, palette-rgb
+//       preset-bundle
 
 //// making-line-point / coloring-line-point
 ////    line-point, coloring(1, black) (memo0: line-point) -> line (memo0: line-point,line-point uCode) <- record origin
@@ -129,11 +130,7 @@ function addStr(uCode, str, dsg, type, memo0, memo1, memo2, callback) {
 exports.addStr = addStr
 
 function getLineSetList(callback) {
-  const info = {
-    params: ['line'],
-    where: 'type = ?'
-  }
-  getStrSetList(info, callback)
+  getSetListByType('line', callback)
 }
 exports.getLineSetList = getLineSetList
 
@@ -147,22 +144,27 @@ function getLineSetListByMemo1(callback, memo1) {
 exports.getLineSetListByMemo1 = getLineSetListByMemo1
 
 function getLinePointSetList(callback) {
-  const info = {
-    params: ['line-point'],
-    where: 'type = ?'
-  }
-  getStrSetList(info, callback)
+  getSetListByType('line-point', callback)
 }
 exports.getLinePointSetList = getLinePointSetList
 
 function getPlaceLineSetList(callback) {
+  getSetListByType('place-line', callback)
+}
+exports.getPlaceLineSetList = getPlaceLineSetList
+
+function getPresetBundleSetList(callback) {
+  getSetListByType('preset-bundle', callback)
+}
+exports.getPresetBundleSetList = getPresetBundleSetList
+
+function getSetListByType(type, callback) {
   const info = {
-    params: ['place-line'],
+    params: [type],
     where: 'type = ?'
   }
   getStrSetList(info, callback)
 }
-exports.getPlaceLineSetList = getPlaceLineSetList
 
 function getColoringAndLinePoint(callback) {
   const coloringInfo = {
