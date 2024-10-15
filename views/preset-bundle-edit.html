@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>preset bundle edit</title>
+  <style>
+    .menu {
+      height: 100%;
+      width: 30%;
+      position: fixed;
+      z-index: 1;
+      overflow-x: hidden;
+    }
+    .main {
+      height: 100%;
+      width: calc(100% - 30% - 8px - 16px);
+      position: fixed;
+      z-index: 1;
+      overflow-x: hidden;
+      right: 12px;
+    }
+    .preview {
+      width: 300px;
+      height: 300px;
+      background-color: lightgray;
+      position: fixed;
+      right: 0;
+      top: 0;
+      z-index: 1;
+    }
+  </style>
+</head>
+<body onload="init()">
+  <div class="menu">
+    <div style="margin: 10px; border: solid 1px">
+      <div style="margin: 20px">
+        memo1 (load lineSet list): <input id="id-input-memo1" type="text" />
+        <button onclick="clearInput('id-input-memo1')">X</button>
+        <button onclick="loadLineSetList()">load</button>
+      </div>
+      <div style="margin: 20px">
+        preset bundle uCode: <input id="id-input-preset-bundle-ucode" type="text" disabled />
+        <button onclick="clearInput('id-input-preset-bundle-ucode')">X</button>
+        <button onclick="load()">load</button>
+      </div>
+    </div>
+    <div style="margin: 10px; border: solid 1px">
+      <div style="margin: 20px">
+        choose tCode:
+        <select name="tcode" id="id-select-tcode">
+          <option value="">choose tCode</option>
+        </select>
+      </div>
+    </div>
+    <div style="margin: 10px; border: solid 1px">
+      <div style="margin: 20px">
+        <button onclick="addScale()">add scale</button>
+        <button onclick="addRotate()">add rotate</button>
+        <button onclick="removeScale()">remove scale</button>
+        <button onclick="removeRotate()">remove rotate</button>
+        <button onclick="print()">print</button>
+        <button onclick="save()">save</button>
+        <label id="id-label-result">to server result: </label>
+      </div>
+    </div>
+    <div id="id-jrc-container">
+    </div>
+  </div>
+  <div class="main" id="id-main">
+    <div style="margin: 10px" id="id-canvas-container">
+      <canvas style="border: solid 1px" id="id-canvas"></canvas>
+    </div>
+  </div>
+  <div class="preview" id="id-preview">
+    <canvas id="id-preview-canvas"></canvas>
+  </div>
+
+  <script type="text/javascript" src="fnc/fnc-draw.js"></script>
+  <script type="text/javascript" src="fnc/fnc-line-info.js"></script>
+  <script type="text/javascript" src="fnc/fnc-part.js"></script>
+  <script type="text/javascript" src="fnc/fnc-transform-line-info.js"></script>
+  <script type="text/javascript" src="fnc/fnc-save.js"></script>
+  <script type="text/javascript" src="info/device/t001.js"></script>
+  <script type="text/javascript" src="info/device/skin-t001.js"></script>
+  <script>
+    const lineSetList = []
+    let preSetList = []
+
+    let canvas
+    let ctx
+    let sx = 100
+    let sy = 100
+
+    let preview
+    let previewCanvas
+    let previewCtx
+    let previewScale = 1
+
+    let slcTCode = ''
+    let slcJrcI = -1
+
+    function init() {
+      const main = document.getElementById('id-main')
+      canvas = document.getElementById('id-canvas')
+      canvas.width = main.offsetWidth - 16 * 2
+      canvas.height = main.offsetHeight - 16 * 3
+      ctx = canvas.getContext('2d')
+      preview = document.getElementById('id-preview')
+      previewCanvas = document.getElementById('id-preview-canvas')
+      previewCanvas.width = preview.offsetWidth
+      previewCanvas.height = preview.offsetHeight
+      previewCtx = previewCanvas.getContext('2d')
+      previewScale = previewCanvas.width / canvas.width * 1.5
+
+      const select = document.getElementById('id-select-tcode')
+      select.addEventListener('change', (e) => {
+        console.log(`select: ${e.target.value}`)
+        selectTCode(e.target.value)
+        draw()
+      })
+    }
+
+    function makeTCodeSelect() {
+      const select = document.getElementById('id-select-tcode')
+      for (const s of preSetList) {
+        // if (s.type !== 'part') continue
+        const option = document.createElement('option')
+        option.value = s.tCode
+        option.innerText = s.tCode
+        select.appendChild(option)
+      }
+    }
+
+    function selectTCode(tCode) {
+      if (tCode.length < 1) return
+      slcTCode = tCode
+      slcJrcI = -1
+      const jrcContainer = document.getElementById('id-jrc-container')
+      jrcContainer.innerHTML = ''
+      const preSet = preSetList.find(p => p.tCode === tCode)
+
+      if (preSet.type === 'part') makeInputLineUCode(jrcContainer, preSet)
+      if (preSet.type !== 'device') makeJrcIBtn(jrcContainer, preSet)
+      if (preSet.type === 'part') makePartJrcEdit(jrcContainer, preSet)
+      if (preSet.type === 'device-group') makeGroupDeviceJrcEdit(jrcContainer, preSet)
+      if (preSet.type === 'device') makeEditDeviceTopLeft(jrcContainer, preSet.calcJrcInfo)
+    }
+
+    function makeInputLineUCode(jrcContainer, preSet) {
+      const uDiv = document.createElement('div')
+      uDiv.style.border = 'solid 1px'
+      uDiv.style.margin = '10px'
+      const ucDiv = document.createElement('div')
+      ucDiv.style.margin = '10px'
+      ucDiv.innerText = 'line uCode: '
+      const uInput = document.createElement('input')
+      uInput.type = 'text'
+      uInput.value = preSet.lineUCode
+      uInput.style.margin = '2px'
+      const cBtn = document.createElement('button')
+      cBtn.innerText = 'X'
+      cBtn.style.margin = '2px'
+      cBtn.addEventListener('click', (e) => {
+        uInput.value = ''
+      })
+      const btn = document.createElement('button')
+      btn.innerText = 'change'
+      btn.addEventListener('click', (e) => {
+        if (uInput.value.length < 1) return
+        preSet.lineUCode = uInput.value
+        draw()
+      })
+      ucDiv.appendChild(uInput)
+      ucDiv.appendChild(cBtn)
+      ucDiv.appendChild(btn)
+      uDiv.appendChild(ucDiv)
+      jrcContainer.appendChild(uDiv)
+    }
+
+    function makeJrcIBtn(jrcContainer, preSet) {
+      const jrcIDiv = document.createElement('div')
+      jrcIDiv.style.border = 'solid 1px'
+      jrcIDiv.style.margin = '10px'
+      const jrcISbDiv = document.createElement('div')
+      jrcISbDiv.style.margin = '10px'
+      jrcISbDiv.innerText = 'jrcI: '
+      const jrcINextBtn = document.createElement('button')
+      const jrcIPrevBtn = document.createElement('button')
+      const jrcIUnselectBtn = document.createElement('button')
+      jrcINextBtn.innerText = 'next'
+      jrcIPrevBtn.innerText = 'prev'
+      jrcIUnselectBtn.innerText = 'unselect'
+      jrcINextBtn.style.margin = '2px'
+      jrcIPrevBtn.style.margin = '2px'
+      jrcIUnselectBtn.style.margin = '2px'
+      jrcIUnselectBtn.addEventListener('click', () => {
+        unselectJrcDiv()
+        slcJrcI = -1
+        draw()
+      })
+      jrcINextBtn.addEventListener('click', () => {
+        if (preSet.type === 'part' && !preSet.jrcInfo) return
+        unselectJrcDiv()
+        slcJrcI++
+        if (preSet.type === 'part' && slcJrcI >= preSet.jrcInfo.list.length) slcJrcI = 0
+        if (preSet.type === 'device-group' && slcJrcI >= preSet.calcJrcInfo.list.length) slcJrcI = 0
+        selectJrcDiv()
+        draw()
+      })
+      jrcIPrevBtn.addEventListener('click', () => {
+        if (preSet.type === 'part' && !preSet.jrcInfo) return
+        unselectJrcDiv()
+        slcJrcI--
+        if (preSet.type === 'part' && slcJrcI < 0) slcJrcI = preSet.jrcInfo.list.length - 1
+        if (preSet.type === 'device-group' && slcJrcI < 0) slcJrcI = preSet.calcJrcInfo.list.length - 1
+        selectJrcDiv()
+        draw()
+      })
+      jrcISbDiv.appendChild(jrcINextBtn)
+      jrcISbDiv.appendChild(jrcIPrevBtn)
+      jrcISbDiv.appendChild(jrcIUnselectBtn)
+      jrcIDiv.appendChild(jrcISbDiv)
+      jrcContainer.appendChild(jrcIDiv)
+    }
+
+    function makePartJrcEdit(jrcContainer, preSet) {
+      makeJrcEdit(jrcContainer, preSet.jrcInfo)
+      if (preSet.transInfo) {
+        const scaleTrn = preSet.transInfo.list.find(i => i.type === 'scale')
+        if (scaleTrn) {
+          const scDiv = document.createElement('div')
+          scDiv.style.border = 'solid 1px'
+          scDiv.style.margin = '10px'
+          const scInputDiv = document.createElement('div')
+          scInputDiv.style.margin = '10px'
+          const inputScaleX = document.createElement('input')
+          const inputScaleY = document.createElement('input')
+          inputScaleX.type = 'number'
+          inputScaleY.type = 'number'
+          inputScaleX.value = `${scaleTrn.scaleX}`
+          inputScaleY.value = `${scaleTrn.scaleY}`
+          inputScaleX.step = '0.01'
+          inputScaleY.step = '0.01'
+          inputScaleX.style.margin = '2px'
+          inputScaleY.style.margin = '2px'
+          scInputDiv.innerText = 'scale x, y: '
+          inputScaleX.addEventListener('change', (e) => {
+            console.log(`change scale x: ${e.target.value}`)
+            scaleTrn.scaleX = Number(e.target.value)
+            draw()
+          })
+          inputScaleY.addEventListener('change', (e) => {
+            console.log(`change scale y: ${e.target.value}`)
+            scaleTrn.scaleY = Number(e.target.value)
+            draw()
+          })
+          scInputDiv.appendChild(inputScaleX)
+          scInputDiv.appendChild(inputScaleY)
+          scDiv.appendChild(scInputDiv)
+          jrcContainer.appendChild(scDiv)
+        }
+        const rotateTrn = preSet.transInfo.list.find(i => i.type === 'rotate')
+        if (rotateTrn) {
+          const rtDiv = document.createElement('div')
+          rtDiv.style.border = 'solid 1px'
+          rtDiv.style.margin = '10px'
+          const dgrInputDiv = document.createElement('div')
+          dgrInputDiv.style.margin = '10px'
+          const inputDegree = document.createElement('input')
+          inputDegree.type = 'number'
+          inputDegree.value = `${rotateTrn.degree}`
+          inputDegree.step = '1'
+          dgrInputDiv.innerText = 'degree: '
+          inputDegree.addEventListener('change', (e) => {
+            console.log(`change degree: ${e.target.value}`)
+            rotateTrn.degree = Number(e.target.value)
+            draw()
+          })
+          dgrInputDiv.appendChild(inputDegree)
+          rtDiv.appendChild(dgrInputDiv)
+          jrcContainer.appendChild(rtDiv)
+        }
+      }
+    }
+
+    function makeGroupDeviceJrcEdit(jrcContainer, preSet) {
+      makeJrcEdit(jrcContainer, preSet.calcJrcInfo)
+      if (!preSet.childInfo) return
+      let i = 0
+      for (const ci of preSet.childInfo.list) {
+        if (!ci.margin) continue
+        const id = `id-div-jrc-${i}`
+        const div = document.getElementById(id)
+        const infoDiv = document.createElement('div')
+        infoDiv.style.margin = '10px'
+        infoDiv.innerText = `childInfo target: ${ci.target}, key: ${ci.key}, cTarget: ${ci.cTarget}, margin`
+        div.appendChild(infoDiv)
+        const inputDiv = document.createElement('div')
+        inputDiv.style.margin = '10px'
+        const inputScX = document.createElement('input')
+        const inputScY = document.createElement('input')
+        inputScX.type = 'number'
+        inputScY.type = 'number'
+        inputScX.value = `${ci.margin.scx}`
+        inputScY.value = `${ci.margin.scy}`
+        inputScX.step = '0.01'
+        inputScY.step = '0.01'
+        inputScX.style.margin = '2px'
+        inputScY.style.margin = '2px'
+        inputDiv.innerText = 'scx, scy: '
+        inputScX.addEventListener('change', (e) => {
+          console.log(`change scx: ${e.target.value}`)
+          ci.margin.scx = Number(e.target.value)
+          draw()
+        })
+        inputScY.addEventListener('change', (e) => {
+          console.log(`change scy: ${e.target.value}`)
+          ci.margin.scy = Number(e.target.value)
+          draw()
+        })
+        inputDiv.appendChild(inputScX)
+        inputDiv.appendChild(inputScY)
+        div.appendChild(inputDiv)
+        i++
+      }
+    }
+
+    function makeJrcEdit(jrcContainer, jrcInfo) {
+      if (!jrcInfo) return
+      let i = 0
+      for (const jrc of jrcInfo.list) {
+        const div = document.createElement('div')
+        div.style.border = 'solid 1px'
+        div.style.margin = '10px'
+        div.id = `id-div-jrc-${i}`
+        const infoDiv = document.createElement('div')
+        infoDiv.style.margin = '10px'
+        infoDiv.innerText = `[${i}] target: ${jrc.target}, key: ${jrc.key}, jrcType: ${jrc.jrcType}`
+        div.appendChild(infoDiv)
+        const inputDiv = document.createElement('div')
+        inputDiv.style.margin = '10px'
+        const inputScX = document.createElement('input')
+        const inputScY = document.createElement('input')
+        inputScX.type = 'number'
+        inputScY.type = 'number'
+        inputScX.value = `${jrc.scx}`
+        inputScY.value = `${jrc.scy}`
+        inputScX.step = '0.01'
+        inputScY.step = '0.01'
+        inputScX.style.margin = '2px'
+        inputScY.style.margin = '2px'
+        inputDiv.innerText = 'scx, scy: '
+        inputScX.addEventListener('change', (e) => {
+          console.log(`change scx: ${e.target.value}`)
+          jrc.scx = Number(e.target.value)
+          draw()
+        })
+        inputScY.addEventListener('change', (e) => {
+          console.log(`change scy: ${e.target.value}`)
+          jrc.scy = Number(e.target.value)
+          draw()
+        })
+        inputDiv.appendChild(inputScX)
+        inputDiv.appendChild(inputScY)
+        div.appendChild(inputDiv)
+        jrcContainer.appendChild(div)
+        i++
+      }
+    }
+
+    function makeEditDeviceTopLeft(jrcContainer, jrcInfo) {
+      const div = document.createElement('div')
+      div.style.border = 'solid 1px'
+      div.style.margin = '10px'
+      const inputDiv = document.createElement('div')
+      inputDiv.style.margin = '10px'
+      const inputTop = document.createElement('input')
+      const inputLeft = document.createElement('input')
+      inputTop.type = 'text'
+      inputLeft.type = 'text'
+      inputTop.value = jrcInfo.top
+      inputLeft.value = jrcInfo.left
+      inputDiv.innerText = 'top, left: '
+      inputDiv.appendChild(inputTop)
+      inputDiv.appendChild(inputLeft)
+      const btn = document.createElement('button')
+      btn.innerText = 'change'
+      btn.addEventListener('click', () => {
+        jrcInfo.top = inputTop.value
+        jrcInfo.left = inputTop.value
+        draw()
+      })
+      inputTop.style.margin = '4px'
+      inputLeft.style.margin = '4px'
+      btn.style.margin = '4px'
+      inputDiv.appendChild(btn)
+      div.appendChild(inputDiv)
+      jrcContainer.appendChild(div)
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+      previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height)
+
+      // const t00CSet = preSetList.find(s => s.tCode === 't00-c')
+      // const part = createDevicePart(t00CSet, lineSetList)
+      // drawPart(previewCtx, part, 10, 10, false, false, previewScale)
+      // const t00UnitSet = preSetList.find(s => s.tCode === 't001')
+      const t00UnitSet = preSetList[preSetList.length - 1]
+      const unit = createDevicePart(t00UnitSet, lineSetList)
+      drawPart(previewCtx, unit, 100, 100, false, false, previewScale)
+
+      const slcSet = preSetList.find(s => s.tCode === slcTCode)
+      console.log(slcSet)
+      if (slcSet) {
+        // const lineSet = lineSetList.find(s => s.split('/')[0] === slcSet.lineUCode)
+        // let line = createSimpleLineInfo(lineSet)
+        let part
+        if (slcSet.type === 'part') {
+          const lineSet = lineSetList.find(s => s.split('/')[0] === slcSet.lineUCode)
+          let line = createSimpleLineInfo(lineSet)
+          if (slcSet.transInfo) {
+            for (const trn of slcSet.transInfo.list) {
+              if (trn.type === 'scale') line = createScaledLineInfo(line, trn.scaleX, trn.scaleY)
+              if (trn.type === 'rotate') {
+                line = createRotateLineInfo(line, degreeToRadian(trn.degree))
+                fitSimpleLineInfo(line)
+              }
+            }
+          }
+          part = createSimplePartInfo(slcSet.uCode, slcSet.tCode, line)
+        } else if (slcSet.type === 'device') {
+          part = createDevicePart(slcSet, lineSetList)
+        } else {
+          part = createDeviceGroupPart(slcSet, lineSetList)
+        }
+
+        ctx.beginPath()
+        ctx.strokeStyle = 'gray'
+        ctx.lineWidth = 1
+        ctx.strokeRect(sx, sy, 500, 500)
+
+        // drawLineInfo(ctx, line, sx, sy)
+        drawPart(ctx, part, sx, sy)
+        let i = 0
+        if (slcSet.jrcInfo) {
+          for (const jrc of slcSet.jrcInfo.list) {
+            // const x = line.w * jrc.scx + sx
+            // const y = line.h * jrc.scy + sy
+            const x = part.w * jrc.scx + sx
+            const y = part.h * jrc.scy + sy
+            let color = 'SteelBlue'
+            if (i === slcJrcI) color = 'red'
+            drawIndexCircle(ctx, i, x, y, color)
+            i++
+          }
+        }
+
+        if (slcSet.type === 'device-group') {
+          console.log(part)
+          let i = 0
+          for (const ci of slcSet.childInfo.list) {
+            const p = part.child.find(c => c.tCode === ci.target)
+            const jrcInfo = slcSet.calcJrcInfo.list.find(j => j.target === ci.target && j.key === ci.key)
+            const cPart = p.child.find(c => c.tCode === ci.cTarget)
+            let scx = jrcInfo.scx
+            let scy = jrcInfo.scy
+            if (ci.margin) {
+              scx = cPart.x / part.w
+              scy = cPart.y / part.h
+              scx += ci.margin.scx
+              scy += ci.margin.scy
+            }
+            const x = part.w * scx + sx
+            const y = part.h * scy + sy
+            let color = 'SteelBlue'
+            if (i === slcJrcI) color = 'red'
+            drawIndexCircle(ctx, i, x, y, color)
+            i++
+          }
+        }
+      }
+    }
+
+    function addScale() {
+      const slcSet = preSetList.find(s => s.tCode === slcTCode)
+      if (!slcSet) return
+      if (slcSet.type !== 'part') return
+      if (!slcSet.transInfo) slcSet.transInfo = { list:[] }
+      const scaleTrn = slcSet.transInfo.list.find(i => i.type === 'scale')
+      if (scaleTrn) return
+      slcSet.transInfo.list.push({
+        type: 'scale',
+        scaleX: 0.5,
+        scaleY: 0.5
+      })
+      selectTCode(slcSet.tCode)
+      draw()
+    }
+
+    function removeScale() {
+      const slcSet = preSetList.find(s => s.tCode === slcTCode)
+      if (!slcSet) return
+      if (slcSet.type !== 'part') return
+      if (!slcSet.transInfo) return
+      const scaleTrn = slcSet.transInfo.list.find(i => i.type === 'scale')
+      if (!scaleTrn) return
+      slcSet.transInfo.list.splice(slcSet.transInfo.list.indexOf(scaleTrn), 1)
+      selectTCode(slcSet.tCode)
+      draw()
+    }
+
+    function addRotate() {
+      const slcSet = preSetList.find(s => s.tCode === slcTCode)
+      if (!slcSet) return
+      if (slcSet.type !== 'part') return
+      if (!slcSet.transInfo) slcSet.transInfo = { list:[] }
+      const rotateTrn = slcSet.transInfo.list.find(i => i.type === 'rotate')
+      if (rotateTrn) return
+      slcSet.transInfo.list.push({
+        type: 'rotate',
+        degree: 0
+      })
+      selectTCode(slcSet.tCode)
+      draw()
+    }
+
+    function removeRotate() {
+      const slcSet = preSetList.find(s => s.tCode === slcTCode)
+      if (!slcSet) return
+      if (slcSet.type !== 'part') return
+      if (!slcSet.transInfo) return
+      const rotateTrn = slcSet.transInfo.list.find(i => i.type === 'rotate')
+      if (!rotateTrn) return
+      slcSet.transInfo.list.splice(slcSet.transInfo.list.indexOf(rotateTrn), 1)
+      selectTCode(slcSet.tCode)
+      draw()
+    }
+
+    function print() {
+      console.log(preSetList)
+
+      // type: part
+      // uCode/tCode/type/lineUCode/jrc num/target,key,jrcType,scx,scy
+      //           /target,key, ... list /trans num/type,value,value/type,value ... list
+
+      // type: device
+      // uCode/tCode/type/child num/child tCode,tCode,tCode ... list/calc jrc num
+      //          /target,key,jrcType,scx,scy/target,key ... list/top tCode/left tCode
+
+      // type: device-group
+      // uCode/tCode/type/child num/child tCode, tCode ... list/calc jrc num
+      //          /target,key,jrcType,scx,scy/target,key ... list/top tCode/left tCode
+      //          /child info num/target,key,cTarget,margin scx,margin scy/target, key ... list
+
+      // \n <- strSet line separator -> list
+
+      const list = []
+      for (const preSet of preSetList) {
+        if (preSet.type === 'part') list.push(createPreStrSetTypePart(preSet))
+        if (preSet.type === 'device') list.push(createPreStrSetTypeDevice(preSet))
+        if (preSet.type === 'device-group') list.push(createPreStrSetTypeDeviceGroup(preSet))
+      }
+      console.log(list)
+    }
+
+    function unselectJrcDiv() {
+      if (slcJrcI < 0) return
+      const div = document.getElementById(`id-div-jrc-${slcJrcI}`)
+      div.style.backgroundColor = ''
+    }
+
+    function selectJrcDiv() {
+      if (slcJrcI < 0) return
+      const div = document.getElementById(`id-div-jrc-${slcJrcI}`)
+      div.style.backgroundColor = 'Sienna'
+    }
+
+    function save() {
+      const uCode = `preset-bundle-${getCurrentDateUCode()}`
+      let str = `${uCode}\n`
+      for (const preSet of preSetList) {
+        if (preSet.type === 'part') str += `${createPreStrSetTypePart(preSet)}\n`
+        if (preSet.type === 'device') str += `${createPreStrSetTypeDevice(preSet)}\n`
+        if (preSet.type === 'device-group') str += `${createPreStrSetTypeDeviceGroup(preSet)}\n`
+      }
+      console.log(str)
+      saveString(uCode, str)
+
+      const memo1 = document.getElementById('id-input-memo1')
+      const presetBundle = {
+        uCode: uCode,
+        str: str,
+        type: 'preset-bundle',
+        dsg: '',
+        memo0: '',
+        memo1: memo1.value,
+        memo2: '',
+      }
+      const label = document.getElementById('id-label-result')
+      postStrSet(presetBundle, label)
+    }
+
+    function clearInput(id) {
+      const input = document.getElementById(id)
+      input.value = ''
+    }
+
+    function load() {
+      const input = document.getElementById('id-input-preset-bundle-ucode')
+      const uCode = input.value
+      const request = new Request(`/str-set/line-set/${uCode}`)
+      fetch(request).then((response) => response.json()).then((json) => {
+        console.log(json)
+        if (json.code === 'str') {
+          const presetBundle = json.str
+          console.log(presetBundle)
+          let list = presetBundle.split('\n')
+          if (list.length === 1) list = presetBundle.split(' ')
+          console.log(list)
+          const uCode = list[0]
+          console.log(uCode)
+          initPresetList(list.splice(1, list.length))
+        }
+      })
+
+      // const list = presetBundle.split('\n')
+      // const list = presetBundle.split(' ')
+      // console.log(list)
+      // const uCode = list[0]
+      // console.log(uCode)
+      // initPresetList(list.splice(1, list.length))
+    }
+
+    function initPresetList(list) {
+      preSetList = []
+      // preset create order: 1.part, 2.device, 3.device-group
+
+      for (const preset of list) if (preset.split('/')[2] === 'part') preSetList.push(createPresetPart(preset))
+      for (const preset of list) if (preset.split('/')[2] === 'device') preSetList.push(createPresetDevice(preset, preSetList))
+      for (const preset of list) if (preset.split('/')[2] === 'device-group') preSetList.push(createPresetDeviceGroup(preset, preSetList))
+
+      console.log(preSetList)
+      makeTCodeSelect()
+      draw()
+    }
+
+    function loadLineSetList() {
+      const input = document.getElementById('id-input-memo1')
+      const request = new Request(`/str-set/line-set-list/${input.value}`)
+      fetch(request).then((response) => response.json()).then((json) => {
+        console.log(json)
+        if (json.code === 'list') {
+          for (const str of json.list) {
+            lineSetList.push(str)
+          }
+          console.log(lineSetList)
+          const uCodeInput = document.getElementById('id-input-preset-bundle-ucode')
+          uCodeInput.disabled = false
+        }
+      })
+    }
+
+    function postStrSet(obj, label) {
+      const request = new Request('/str-set/add-str', {
+        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', body: JSON.stringify(obj)
+      })
+      fetch(request).then(response => {
+        return response.json()
+      }).then(result => {
+        console.log(result)
+        const str = `${obj.type}: ${result.code}`
+        label.innerText = `${label.innerText}, ${str}`
+      })
+    }
+  </script>
+</body>
+</html>

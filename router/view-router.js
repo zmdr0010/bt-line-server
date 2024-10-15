@@ -66,4 +66,8 @@ router.get('/preset-bundle-list', (req, res) => {
   res.render('preset-bundle-list.html')
 })
 
+router.get('/preset-bundle-edit', (req, res) => {
+  res.render('preset-bundle-edit.html')
+})
+
 exports.router = router

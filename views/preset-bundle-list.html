@@ -72,7 +72,8 @@
     function makeList() {
       const container = document.getElementById('id-container')
       for (const preStr of preStrList) {
-        const prSplit = preStr.split(' ')
+        let prSplit = preStr.split('\n')
+        if (prSplit.length === 1) prSplit = preStr.split(' ')
         console.log(prSplit)
         const uCode = prSplit[0]
         const prList = prSplit.slice(1, prSplit.length)
