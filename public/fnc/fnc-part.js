@@ -45,7 +45,7 @@ function calculateToJrcInfo(partInfoList, calcJrcInfo) {
     const partInfo = partInfoList.find(info => info.tCode === cjInfo.target)
     const x = partInfo.w * cjInfo.scx
     const y = partInfo.h * cjInfo.scy
-    // console.log(`w: ${partInfo.w}, h: ${partInfo.h}, scx: ${cjInfo.scx}, scy: ${cjInfo.scy}, x: ${x}, y: ${y}`)
+    console.log(`w: ${partInfo.w}, h: ${partInfo.h}, scx: ${cjInfo.scx}, scy: ${cjInfo.scy}, x: ${x}, y: ${y}`)
     list.push({
       target: cjInfo.target,
       key: cjInfo.key,
@@ -94,25 +94,28 @@ function calculatePartSize(partInfo) {
   partInfo.h = lastY - y
 }
 
-function moveAutoJoin(partInfo, calcJrcInfo, topTCode, leftTCode) {
+function moveAutoJoin(partInfo, calcJrcInfo) {
   // 0. auto calculate jrc (joint x y)
   const jrcInfoList = calculateToJrcInfo(partInfo.child, calcJrcInfo)
 
-  // 1. topTCode to top (y = 0)
-  const tPart = partInfo.child.find(info => info.tCode === topTCode)
-  tPart.y = 0
-
-  // 2. m to g
+  // 1. m to g
   moveByJrcInfo(partInfo.child, jrcInfoList)
 
-  // 3. leftTCode to left => other parts to left
-  const lPart = partInfo.child.find(info => info.tCode === leftTCode)
-  const mx = 0 - lPart.x
+  // 2. fit
+  let minX = 10000000
+  let minY = 10000000
+  for (const c of partInfo.child) {
+    minX = Math.min(minX, c.x)
+    minY = Math.min(minY, c.y)
+  }
+  const my = 0 - minY
+  const mx = 0 - minX
   for (const c of partInfo.child) {
     c.x += mx
+    c.y += my
   }
 
-  // 4. re calculate w, h
+  // 3. re calculate w, h
   partInfo.w = 0
   partInfo.h = 0
   calculatePartSize(partInfo)
@@ -158,7 +161,7 @@ function createDevicePart(deviceSet, lineSetList) {
     const cPart = createSimplePartInfo(c.uCode, c.tCode, cLine)
     part.child.push(cPart)
   }
-  moveAutoJoin(part, calcJrc, deviceSet.calcJrcInfo.top, deviceSet.calcJrcInfo.left)
+  moveAutoJoin(part, calcJrc)
 
   return part
 }
@@ -184,6 +187,7 @@ function createDeviceGroupPart(groupSet, lineSetList) {
     if (deviceSet.type === 'device-group') {
       p = createDeviceGroupPart(deviceSet, lineSetList)
     } else { // device
+      console.log(deviceSet.type)
       p = createDevicePart(deviceSet, lineSetList)
     }
     part.child.push(p)
@@ -204,7 +208,7 @@ function createDeviceGroupPart(groupSet, lineSetList) {
       jrcInfo.scy = scy
     }
   }
-  moveAutoJoin(part, calcJrc, groupSet.calcJrcInfo.top, groupSet.calcJrcInfo.left)
+  moveAutoJoin(part, calcJrc)
   return part
 }
 
@@ -276,14 +280,12 @@ function createPreStrSetTypePart(preSet) {
 //       { target: 't00-b-bl0', key: 'jp-t00-b-bl0-bl1', jrcType: 'g', scx: 0.37, scy: 0.9 },
 //       { target: 't00-b-br1', key: 'jp-t00-b-br0-br1', jrcType: 'm', scx: 0.64, scy: 0.32 },
 //       { target: 't00-b-bl1', key: 'jp-t00-b-bl0-bl1', jrcType: 'm', scx: 0.03, scy: 0.34 }
-//     ],
-//     top: 't00-b-b0', // top tCode to auto move
-//     left: 't00-b-br1' // left tCode to auto move
+//     ]
 //   }
 // }
 // type: device
 // uCode/tCode/type/child num/child tCode,tCode,tCode ... list/calc jrc num
-//          /target,key,jrcType,scx,scy/target,key ... list/top tCode/left tCode
+//          /target,key,jrcType,scx,scy/target,key ... list
 function createPreStrSetTypeDevice(preSet) {
   let str = `${preSet.uCode}/${preSet.tCode}/${preSet.type}/${preSet.child.length}/`
   for (const cSet of preSet.child) {
@@ -294,7 +296,7 @@ function createPreStrSetTypeDevice(preSet) {
   for (const jrc of preSet.calcJrcInfo.list) {
     str += `/${jrc.target},${jrc.key},${jrc.jrcType},${jrc.scx},${jrc.scy}`
   }
-  str += `/${preSet.calcJrcInfo.top}/${preSet.calcJrcInfo.left}`
+
   return str
 }
 
@@ -311,9 +313,7 @@ function createPreStrSetTypeDevice(preSet) {
 //       // scx, scy: scale x, scale y
 //       { target: 't00-c', key: 'jp-t00-c-b', jrcType: 'g', scx: 0.5, scy: 0.9 },
 //       { target: 't00-b', key: 'jp-t00-c-b', jrcType: 'm', scx: 0.1, scy: 0.1 }
-//     ],
-//     top: 't00-c', // top tCode to auto move
-//     left: 't00-c' // left tCode to auto move
+//     ]
 //   },
 //   childInfo: { // calculate jrc list by childInfo
 //     //   child target x, y / device w, h + margin
@@ -341,7 +341,7 @@ function createPreStrSetTypeDevice(preSet) {
 // }
 // type: device-group
 // uCode/tCode/type/child num/child tCode, tCode ... list/calc jrc num
-//          /target,key,jrcType,scx,scy/target,key ... list/top tCode/left tCode
+//          /target,key,jrcType,scx,scy/target,key ... list
 //          /child info num/target,key,cTarget,margin scx,margin scy/target, key ... list
 function createPreStrSetTypeDeviceGroup(preSet) {
   let str = `${preSet.uCode}/${preSet.tCode}/${preSet.type}/${preSet.child.length}/`
@@ -353,7 +353,6 @@ function createPreStrSetTypeDeviceGroup(preSet) {
   for (const jrc of preSet.calcJrcInfo.list) {
     str += `/${jrc.target},${jrc.key},${jrc.jrcType},${jrc.scx},${jrc.scy}`
   }
-  str += `/${preSet.calcJrcInfo.top}/${preSet.calcJrcInfo.left}`
   if (preSet.childInfo) {
     str += `/${preSet.childInfo.list.length}`
     for (const ci of preSet.childInfo.list) {
@@ -419,7 +418,7 @@ function createPresetPart(strSet) {
 
 // type: device
 // uCode/tCode/type/child num/child tCode,tCode,tCode ... list/calc jrc num
-//          /target,key,jrcType,scx,scy/target,key ... list/top tCode/left tCode
+//          /target,key,jrcType,scx,scy/target,key ... list
 function createPresetDevice(strSet, presetList) {
   const strSetSplit = strSet.split('/')
   const uCode = strSetSplit[0]
@@ -436,7 +435,7 @@ function createPresetDevice(strSet, presetList) {
   const calcJrcNum = Number(strSetSplit[5])
   const calcJrcStart = 6
   const calcJrcLengthI = calcJrcStart + calcJrcNum
-  const calcJrcInfo = { list: [], top: '', left: '' }
+  const calcJrcInfo = { list: [] }
   for (let i=calcJrcStart; i<calcJrcLengthI; i++) {
     const str = strSetSplit[i]
     const split = str.split(',')
@@ -447,8 +446,6 @@ function createPresetDevice(strSet, presetList) {
     const scy = Number(split[4])
     calcJrcInfo.list.push({ target: target, key: key, jrcType: jrcType, scx: scx, scy: scy })
   }
-  calcJrcInfo.top = strSetSplit[calcJrcLengthI]
-  calcJrcInfo.left = strSetSplit[calcJrcLengthI + 1]
 
   return {
     uCode: uCode,
@@ -461,7 +458,7 @@ function createPresetDevice(strSet, presetList) {
 
 // type: device-group
 // uCode/tCode/type/child num/child tCode, tCode ... list/calc jrc num
-//          /target,key,jrcType,scx,scy/target,key ... list/top tCode/left tCode
+//          /target,key,jrcType,scx,scy/target,key ... list
 //          /child info num/target,key,cTarget,margin scx,margin scy/target, key ... list
 function createPresetDeviceGroup(strSet, presetList) {
   const strSetSplit = strSet.split('/')
@@ -479,7 +476,7 @@ function createPresetDeviceGroup(strSet, presetList) {
   const calcJrcNum = Number(strSetSplit[5])
   const calcJrcStart = 6
   const calcJrcLengthI = calcJrcStart + calcJrcNum
-  const calcJrcInfo = { list: [], top: '', left: '' }
+  const calcJrcInfo = { list: [] }
   for (let i=calcJrcStart; i<calcJrcLengthI; i++) {
     const str = strSetSplit[i]
     const split = str.split(',')
@@ -490,16 +487,14 @@ function createPresetDeviceGroup(strSet, presetList) {
     const scy = Number(split[4])
     calcJrcInfo.list.push({ target: target, key: key, jrcType: jrcType, scx: scx, scy: scy })
   }
-  calcJrcInfo.top = strSetSplit[calcJrcLengthI]
-  calcJrcInfo.left = strSetSplit[calcJrcLengthI + 1]
 
-  const childInfoNum = Number(strSetSplit[calcJrcLengthI + 2])
+  const childInfoNum = Number(strSetSplit[calcJrcLengthI])
   let childInfo = null
   if (childInfoNum > 0) {
     childInfo = {
       list: []
     }
-    const childInfoStart = calcJrcLengthI + 3
+    const childInfoStart = calcJrcLengthI + 1
     const childInfoLengthI = childInfoStart + childInfoNum
     for (let i=childInfoStart; i<childInfoLengthI; i++) {
       const str = strSetSplit[i]

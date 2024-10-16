@@ -109,10 +109,10 @@
                 unitPart = createDeviceGroupPart(unitPartSet, lineSetList)
               }
               const canvas = document.createElement('canvas')
-              canvas.width = unitPart.w + 50 + 10
-              canvas.height = unitPart.h + 50 + 10
+              canvas.width = unitPart.w + 10 + 10
+              canvas.height = unitPart.h + 10 + 10
               const ctx = canvas.getContext('2d')
-              drawPart(ctx, unitPart, 50, 50)
+              drawPart(ctx, unitPart, 10, 10)
               const div = document.createElement('div')
               div.appendChild(canvas)
               const label = document.createElement('label')
