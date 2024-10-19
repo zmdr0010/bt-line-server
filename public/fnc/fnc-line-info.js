@@ -260,9 +260,6 @@ function createSimpleLineFromLinePointSet(set) {
     child: [],
     pointInfo: {
       list: pList
-    },
-    origin: { // linePoint uCode
-      uCode: uCode
     }
   }
   calculateLineInfoSize(lineInfo)
@@ -286,6 +283,25 @@ function createColorSet(colorInfo) {
     str += `/${c.width},${c.color}`
   }
   return str
+}
+
+function createColorInfo(set) {
+  const split = set.split('/')
+  const uCode = split[0]
+  const lineUCode = split[1]
+  const list = []
+  for (let i=2; i<split.length; i++) {
+    const st = split[i]
+    const stSplit = st.split(',')
+    const width = Number(stSplit[0])
+    const color = stSplit[1]
+    list.push({ width: width, color: color })
+  }
+  return {
+    uCode: uCode,
+    lineUCode: lineUCode,
+    list: list
+  }
 }
 
 function createLinePointFromLineInfo(info) {

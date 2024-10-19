@@ -70,4 +70,12 @@ router.get('/preset-bundle-edit', (req, res) => {
   res.render('preset-bundle-edit.html')
 })
 
+router.get('/dvc-srt-bundle-list', (req, res) => {
+  res.render('dvc-srt-bundle-list.html')
+})
+
+router.get('/making-dvc-srt-bundle', (req, res) => {
+  res.render('making-dvc-srt-bundle.html')
+})
+
 exports.router = router

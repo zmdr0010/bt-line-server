@@ -1,4 +1,5 @@
 const express = require('express')
+const cors = require('cors')
 const ipChecker = require('./mdl/ip-checker')
 const app = express()
 const fs = require('node:fs')
@@ -18,6 +19,7 @@ app.use(express.json())
 app.use(express.urlencoded({ extended: true })) // body parser
 app.use('/str-set', strSetRouter.router)
 app.use('/', viewRouter.router) // html script src: ex. '/': fnc/fnc-draw.js <-> '/view': ../fnc/fnc-draw.js
+app.use(cors())
 
 app.get('/', (req, res) => {
   res.send('bt-line')

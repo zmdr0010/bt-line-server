@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>making dvc srt bundle</title>
+  <style>
+    .menu {
+      height: 100%;
+      width: 30%;
+      position: fixed;
+      z-index: 1;
+      overflow-x: hidden;
+    }
+    .main {
+      height: 100%;
+      width: calc(100% - 30% - 8px - 16px - 400px);
+      position: fixed;
+      z-index: 1;
+      overflow-x: hidden;
+      left: calc(30%);
+    }
+    .preview {
+      width: 400px;
+      height: 100%;
+      /*background-color: lightgray;*/
+      position: fixed;
+      right: 0;
+      /*top: 0;*/
+      z-index: 1;
+    }
+  </style>
+</head>
+<body onload="init()">
+  <div class="menu" id="id-menu"></div>
+  <div class="main" id="id-main">
+    <div style="margin: 10px" id="id-canvas-container">
+      <canvas style="border: solid 1px" id="id-canvas"></canvas>
+    </div>
+  </div>
+  <div class="preview" id="id-preview">
+    <div style="margin: 10px">
+      <canvas style="border: solid 1px" id="id-preview-canvas"></canvas>
+    </div>
+  </div>
+
+
+  <script type="text/javascript" src="fnc/fnc-draw.js"></script>
+  <script type="text/javascript" src="fnc/fnc-line-info.js"></script>
+  <script type="text/javascript" src="fnc/fnc-part.js"></script>
+  <script type="text/javascript" src="fnc/fnc-transform-line-info.js"></script>
+  <script type="text/javascript" src="fnc/fnc-save.js"></script>
+  <script type="text/javascript" src="fnc/fnc-dvc-srt.js"></script>
+  <script type="text/javascript" src="cmp/cmp-common.js"></script>
+  <script type="text/javascript" src="cmp/cmp-input.js"></script>
+  <script type="text/javascript" src="cmp/cmp-select.js"></script>
+  <script type="text/javascript" src="cmp/cmp-btn.js"></script>
+  <script>
+    let lineSetList = []
+
+    // child: bk, b2, br, b1, bl, c, b0, l
+    // calcJrc: c, b1 <- bk, b0, b2, br, bl
+
+    // device structure strSet
+    // tCode/child num/child tCode,tCode,tCode ... list /calc key num/key,key,key ... list
+    //     tCode = uCode
+    //     calc key: gTCode_mTCode -> create calcJrcInfo
+    //     no tCode in device list -> part -> create part set
+    //     child num: 0 or length: 1 (tCode) -> part
+
+    // bundle set
+    //  tCode
+    //  tCode
+    //  tCode/child num/child tCode,tCode/calc key num/key,key
+    //  tCode/child num/child tCode,tCode/calc key num/key,key
+    //  ...
+    // order: parent device, device, part <- create from last (bottom)
+
+    // dvc: device
+    const dvcTCodeStrSetList = [
+      'bk/3/bkI0,bkI1,bkI2/2/bkI0_bkI1,bkI0_bkI2',
+      'b2/4/b2I0,b2I1,b2I2,b2I3/3/b2I0_b2I1,b2I0_b2I2,b2I0_b2I3',
+      'br/5/brI0,brI1,brI2,brI3,brI4/4/brI0_brI1,brI0_brI2,brI0_brI3,brI0_brI4',
+      'b1/3/b1I0,b1I1,b1I2/2/b1I0_b1I1,b1I0_b1I2',
+      'bl/5/blI0,blI1,blI2,blI3,blI4/4/blI0_blI1,blI0_blI2,blI0_blI3,blI0_blI4',
+      'c/6/cI0,cI1,cI2,cI3,cI4,cI5/5/cI0_cI1,cI0_cI2,cI0_cI3,cI0_cI4,cI0_cI5',
+      'b0/3/b0I0,b0I1,b0I2/2/b0I0_b0I1,b0I0_b0I2',
+      'l/5/lI0,lI1,lI2,lI3,lI4/4/lI0_lI1,lI0_lI2,lI0_lI3,lI0_lI4',
+      't000/8/bk,b2,br,b1,bl,c,b0,l/7/c_l,c_bk,c_b1,b1_b0,b1_b2,b1_br,b1_bl'
+    ]
+
+    let canvas
+    let ctx
+    let preview
+    let previewCanvas
+    let previewCtx
+    let previewScale = 1
+
+    let infoList = []
+
+    let transInfo = {
+      scale: {
+        scaleX: 1,
+        scaleY: 1
+      },
+      rotate: {
+        degree: 0
+      },
+      sftRI: {
+        ri: 0
+      },
+      p4: {
+        lt: { scx: 0.0, scy: 0.0 },
+        rt: { scx: 1.0, scy: 0.0 },
+        lb: { scx: 0.0, scy: 1.0 },
+        rb: { scx: 1.0, scy: 1.0 }
+      }
+    }
+
+    let sx = 100
+    let sy = 100
+    let slcJrcI = -1
+
+    let partW = 0
+    let partH = 0
+
+    function init() {
+      const main = document.getElementById('id-main')
+      canvas = document.getElementById('id-canvas')
+      canvas.width = main.offsetWidth - 16 * 2
+      canvas.height = main.offsetHeight - 16 * 3
+      ctx = canvas.getContext('2d')
+      preview = document.getElementById('id-preview')
+      previewCanvas = document.getElementById('id-preview-canvas')
+      previewCanvas.width = 350
+      previewCanvas.height = 350
+      previewCtx = previewCanvas.getContext('2d')
+      previewScale = previewCanvas.width / canvas.width * 1.5
+
+      // makeMenu()
+      // makePreviewMenu()
+
+      const request = new Request('/str-set/line-set-list')
+      fetch(request).then((response) => response.json()).then((json) => {
+        console.log(json)
+        if (json.code === 'list') {
+          for (const str of json.list) {
+            lineSetList.push(str)
+          }
+          console.log(lineSetList)
+          makeMenu()
+          makePreviewMenu()
+        }
+      })
+    }
+
+    function makeMenu() {
+      const menu = document.getElementById('id-menu')
+      makeInputBundleSet(menu)
+      makeTCodeSelect(menu)
+      makeDeviceContainer(menu)
+
+    }
+
+    function makeInputBundleSet(menu) {
+      const container = createContainer()
+      menu.appendChild(container.border)
+      makeInputTextBtn('id-input-bundle-set-ucode', container.content, 'dvc-srt bundleSet uCode: ',
+        'load', () => {
+          const uCode = getInputValue('id-input-bundle-set-ucode')
+          console.log(`load: ${uCode}`)
+          const request = new Request(`/str-set/line-set/${uCode}`)
+          fetch(request).then((response) => response.json()).then((json) => {
+            console.log(json)
+            if (json.code === 'str') {
+              const strSet = json.str
+              initInfoList(strSet)
+            }
+          })
+      })
+
+      makeBtnGroup(container.content, [
+        { id: 'id-btn-print', labelTxt: 'print', onClick: print },
+        { id: 'id-btn-save', labelTxt: 'save', onClick: save }
+      ])
+    }
+
+    // set: bundleSet
+    function initInfoList(set) {
+      const split = set.split('\n')
+      const type = split[1]
+      console.log(type)
+      if (type === 'tCode') {
+        console.log(set)
+        infoList = createDvcSrtInfoListByTCodeBundleSet(set)
+      } else {
+        const bundleInfo = createDvcSrtBundleInfo(set)
+        infoList = bundleInfo.list
+      }
+      console.log(infoList)
+      const tCodeList = []
+      for (const info of infoList) tCodeList.push(info.tCode)
+      initSelect('id-select-tcode', tCodeList)
+      makeJrcEdit()
+      draw()
+    }
+
+    function makeTCodeSelect(menu) {
+      const container = createContainer()
+      menu.appendChild(container.border)
+      makeSelect('id-select-tcode', container.content, 'tCode: ', 'choose tCode', () => {
+        makeJrcEdit()
+        draw()
+      })
+
+      makeSimpleTxtDiv('id-div-txt-part-size', container.content, 'part w: 0, h: 0')
+      makeInputBoxOnOff(container.content, 'id-input-check-is-on-bound', 'isOnBound: ', [], draw)
+      makeInputTextBtn('id-input-child-order', container.content, 'child order: ', 'change',
+        () => {
+          const info = getCurrentTCodeInfo()
+          if (info.child.length < 1) return
+          const str = getInputValue('id-input-child-order')
+          if (str.length < 1) return
+          const split = str.split(',')
+          const child = []
+          for (const tCode of split) {
+            const index = info.child.findIndex(c => c.tCode === tCode)
+            if (index < 0) continue
+            child.push(info.child.splice(index, 1)[0])
+          }
+          info.child = child.concat(info.child)
+          draw()
+        })
+    }
+
+    function makeDeviceContainer(menu) {
+      const container = createContainer()
+      menu.appendChild(container.border)
+      container.content.id = 'id-container-device'
+
+      makeInputTextBtn('id-input-line-ucode', container.content, 'lineUCode: ',
+        'change', () => {
+          const lineUCode = getInputValue('id-input-line-ucode')
+          console.log(`change lineUCode: ${lineUCode}`)
+          const info = getCurrentTCodeInfo()
+          if (info) info.lineUCode = lineUCode
+          draw()
+      })
+
+      const changeScaleX = () => {
+        const scale = getInputValueNumber('id-input-scale-x')
+        transInfo.scale.scaleX = scale
+        changeInputValue('id-input-w', partW * scale)
+
+        draw()
+      }
+      const changeScaleY = () => {
+        const scale = getInputValueNumber('id-input-scale-y')
+        transInfo.scale.scaleY = scale
+        changeInputValue('id-input-h', partH * scale)
+        draw()
+      }
+      const changeDegree = () => {
+        transInfo.rotate.degree = getInputValueNumber('id-input-degree')
+        draw()
+      }
+
+      // list: [ { id: '', labelTxt: '', onChange: null, value: 0, step: 1 } ]
+      makeInputBoxOnOff(container.content, 'id-input-check-scale', 'scale', [
+        { id: 'id-input-scale-x', labelTxt: 'scaleX: ', onChange: changeScaleX, value: 1, step: 0.01 },
+        { id: 'id-input-scale-y', labelTxt: 'scaleY: ', onChange: changeScaleY, value: 1, step: 0.01 },
+        { id: 'id-input-w', labelTxt: 'w: ',
+          onChange: () => {
+            changeInputValue('id-input-scale-x', getInputValueNumber('id-input-w')/partW)
+            transInfo.scale.scaleX = getInputValueNumber('id-input-scale-x')
+            draw()
+          }, value: 1, step: 1 },
+        { id: 'id-input-h', labelTxt: 'h: ',
+          onChange: () => {
+            changeInputValue('id-input-scale-y', getInputValueNumber('id-input-h')/partH)
+            transInfo.scale.scaleY = getInputValueNumber('id-input-scale-y')
+            draw()
+          }, value: 1, step: 1 }
+      ], draw)
+      makeInputBoxOnOff(container.content, 'id-input-check-rotate', 'rotate', [
+        { id: 'id-input-degree', labelTxt: 'degree: ', onChange: changeDegree, value: 0, step: 1 }
+      ], draw)
+
+      makeSelect('id-select-sft-ri', container.content, 'sftRI: ', 'choose sftRI', () => {
+        transInfo.sftRI.ri = getInputValueNumber('id-select-sft-ri')
+        draw()
+      })
+      initSelect('id-select-sft-ri', [0,1,2,3,4,5,6,7])
+
+      makeInputBoxOnOff(container.content, 'id-input-check-p4', 'p4', [
+        { id: 'id-input-p4-lt-scx', labelTxt: 'lt.scx: ',
+          onChange: () => {
+            transInfo.p4.lt.scx = getInputValueNumber('id-input-p4-lt-scx')
+            draw()
+          }, value: 0.0, step: 0.01 },
+        { id: 'id-input-p4-lt-scy', labelTxt: 'lt.scy: ',
+          onChange: () => {
+            transInfo.p4.lt.scy = getInputValueNumber('id-input-p4-lt-scy')
+            draw()
+          }, value: 0.0, step: 0.01 },
+        { id: 'id-input-p4-rt-scx', labelTxt: 'rt.scx: ',
+          onChange: () => {
+            transInfo.p4.rt.scx = getInputValueNumber('id-input-p4-rt-scx')
+            draw()
+          }, value: 1.0, step: 0.01 },
+        { id: 'id-input-p4-rt-scy', labelTxt: 'rt.scy: ',
+          onChange: () => {
+            transInfo.p4.rt.scy = getInputValueNumber('id-input-p4-rt-scy')
+            draw()
+          }, value: 0.0, step: 0.01 },
+        { id: 'id-input-p4-lb-scx', labelTxt: 'lb.scx: ',
+          onChange: () => {
+            transInfo.p4.lb.scx = getInputValueNumber('id-input-p4-lb-scx')
+            draw()
+          }, value: 0.0, step: 0.01 },
+        { id: 'id-input-p4-lb-scy', labelTxt: 'lb.scy: ',
+          onChange: () => {
+            transInfo.p4.lb.scy = getInputValueNumber('id-input-p4-lb-scy')
+            draw()
+          }, value: 1.0, step: 0.01 },
+        { id: 'id-input-p4-rb-scx', labelTxt: 'rb.scx: ',
+          onChange: () => {
+            transInfo.p4.rb.scx = getInputValueNumber('id-input-p4-rb-scx')
+            draw()
+          }, value: 1.0, step: 0.01 },
+        { id: 'id-input-p4-rb-scy', labelTxt: 'rb.scy: ',
+          onChange: () => {
+            transInfo.p4.rb.scy = getInputValueNumber('id-input-p4-rb-scy')
+            draw()
+          }, value: 1.0, step: 0.01 },
+      ], draw)
+
+      const jrcContainer = createContainer()
+      menu.appendChild(jrcContainer.border)
+      jrcContainer.content.id = 'id-container-jrc-edit'
+      jrcContainer.content.innerText = 'jrc edit'
+    }
+
+    function makeJrcEdit() {
+      const container = document.getElementById('id-container-jrc-edit')
+      container.innerHTML = ''
+      container.innerText = 'jrc edit'
+      const info = getCurrentTCodeInfo()
+      console.log(info)
+      if (!info) return
+      changeInputValue('id-input-line-ucode', info.lineUCode)
+      updateChildOrder(info)
+      updateTransEdit(info)
+      const part = createDvcPart(info, lineSetList)
+      changeSimpleTxtDiv('id-div-txt-part-size', `part w: ${part.w}, h: ${part.h}`)
+      changeInputValue('id-input-w', part.w * getInputValueNumber('id-input-scale-x'))
+      changeInputValue('id-input-h', part.h * getInputValueNumber('id-input-scale-y'))
+      partW = part.w
+      partH = part.h
+      if (!info.jrcInfo) return
+      let i = 0
+      for (const jrc of info.jrcInfo.list) {
+        console.log(jrc)
+        const div = createSubDiv()
+        div.innerText = `[${i}] ${jrc.target}, ${jrc.key}, ${jrc.jrcType}`
+        const idX = `id-input-jrc-x-${info.tCode}-${i}`
+        makeInputNum(idX, div, 'x: ', jrc.x, () => {
+          jrc.x = getInputValueNumber(idX)
+          console.log(`change jrc.x: ${jrc.x}`)
+          draw()
+        })
+        const idY = `id-input-jrc-y-${info.tCode}-${i}`
+        makeInputNum(idY, div, 'y: ', jrc.y, () => {
+          jrc.y = getInputValueNumber(idY)
+          console.log(`change jrc.y: ${jrc.y}`)
+          draw()
+        })
+        i++
+        container.appendChild(div)
+      }
+    }
+
+    // info: current tCodeInfo
+    function updateTransEdit(info) {
+      setChecked('id-input-check-scale', false)
+      setChecked('id-input-check-rotate', false)
+      changeInputValue('id-select-sft-ri', 0)
+      setChecked('id-input-check-p4', false)
+      if (info.transInfo) {
+        for (const tr of info.transInfo.list) {
+          if (tr.type === 'scale') {
+            setChecked('id-input-check-scale', true)
+            changeInputValue('id-input-scale-x', tr.scaleX)
+            changeInputValue('id-input-scale-y', tr.scaleY)
+            transInfo.scale.scaleX = tr.scaleX
+            transInfo.scale.scaleY = tr.scaleY
+          }
+          if (tr.type === 'rotate') {
+            setChecked('id-input-check-rotate', true)
+            changeInputValue('id-input-degree', tr.degree)
+            transInfo.rotate.degree = tr.degree
+          }
+          if (tr.type === 'sftRI') {
+            changeInputValue('id-select-sft-ri', tr.ri)
+            transInfo.sftRI.ri = tr.ri
+          }
+          if (tr.type === 'p4') {
+            setChecked('id-input-check-p4', true)
+            changeInputValue('id-input-p4-lt-scx', tr.p4Info.lt.scx)
+            changeInputValue('id-input-p4-lt-scy', tr.p4Info.lt.scy)
+            changeInputValue('id-input-p4-rt-scx', tr.p4Info.rt.scx)
+            changeInputValue('id-input-p4-rt-scy', tr.p4Info.rt.scy)
+            changeInputValue('id-input-p4-lb-scx', tr.p4Info.lb.scx)
+            changeInputValue('id-input-p4-lb-scy', tr.p4Info.lb.scy)
+            changeInputValue('id-input-p4-rb-scx', tr.p4Info.rb.scx)
+            changeInputValue('id-input-p4-rb-scy', tr.p4Info.rb.scy)
+            transInfo.p4.lt.scx = tr.p4Info.lt.scx
+            transInfo.p4.lt.scy = tr.p4Info.lt.scy
+            transInfo.p4.rt.scx = tr.p4Info.rt.scx
+            transInfo.p4.rt.scy = tr.p4Info.rt.scy
+            transInfo.p4.lb.scx = tr.p4Info.lb.scx
+            transInfo.p4.lb.scy = tr.p4Info.lb.scy
+            transInfo.p4.rb.scx = tr.p4Info.rb.scx
+            transInfo.p4.rb.scy = tr.p4Info.rb.scy
+          }
+        }
+      } else {
+        transInfo.sftRI.ri = 0
+      }
+    }
+
+    function updateChildOrder(info) {
+      if (info.child.length > 0) {
+        setDisabled('id-input-child-order', false)
+        let str = ''
+        for (const c of info.child) str += `${c.tCode},`
+        str = str.slice(0, str.length-1)
+        changeInputValue('id-input-child-order', str)
+      } else {
+        setDisabled('id-input-child-order', true)
+      }
+    }
+
+    function print() {
+      console.log('print')
+      const bundleSet = createDvcSrtBundleStrSet(infoList)
+      console.log(bundleSet)
+    }
+
+    function save() {
+      console.log('save')
+      const bundleSet = createDvcSrtBundleStrSet(infoList)
+      console.log(bundleSet)
+      saveString(bundleSet.uCode, bundleSet.bundleSet)
+
+      // to server
+      // const bnd = {
+      //   uCode: bundleSet.uCode,
+      //   str: bundleSet.bundleSet,
+      //   type: 'dvc-srt-bundle',
+      //   dsg: '',
+      //   memo0: '',
+      //   memo1: '',
+      //   memo2: ''
+      // }
+      // const request = new Request('http://localhost:3336/str-set/add-str', {
+      //   headers: { 'Content-Type': 'application/json' },
+      //   method: 'POST', body: JSON.stringify(bnd)
+      // })
+      // fetch(request).then(response => {
+      //   return response.json()
+      // }).then(result => {
+      //   console.log(result)
+      // })
+    }
+
+    function getCurrentTCodeInfo() {
+      const tCode = getInputValue('id-select-tcode')
+      const info = infoList.find(i => i.tCode === tCode)
+      return info
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+      previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height)
+      const isOnBound = getChecked('id-input-check-is-on-bound')
+
+      const info = getCurrentTCodeInfo()
+      const isCheckedScale = getChecked('id-input-check-scale')
+      const isCheckedRotate = getChecked('id-input-check-rotate')
+      const isCheckedP4 = getChecked('id-input-check-p4')
+      console.log(`isChecked scale: ${isCheckedScale}, rotate: ${isCheckedRotate}`)
+      info.transInfo = null
+      if (isCheckedScale || isCheckedRotate || transInfo.sftRI.ri > 0 || isCheckedP4) {
+        info.transInfo = { list: [] }
+        if (isCheckedScale) info.transInfo.list.push(
+          { type: 'scale', scaleX: transInfo.scale.scaleX, scaleY: transInfo.scale.scaleY })
+        if (isCheckedRotate) info.transInfo.list.push(
+          { type: 'rotate', degree: transInfo.rotate.degree })
+        if (transInfo.sftRI.ri > 0) info.transInfo.list.push(
+          { type: 'sftRI', ri: transInfo.sftRI.ri })
+        if (isCheckedP4) info.transInfo.list.push(
+          { type: 'p4',
+            p4Info: {
+              lt: { scx: transInfo.p4.lt.scx, scy: transInfo.p4.lt.scy },
+              rt: { scx: transInfo.p4.rt.scx, scy: transInfo.p4.rt.scy },
+              lb: { scx: transInfo.p4.lb.scx, scy: transInfo.p4.lb.scy },
+              rb: { scx: transInfo.p4.rb.scx, scy: transInfo.p4.rb.scy }
+            }
+          })
+      }
+      const part = createDvcPart(info, lineSetList)
+      // changeSimpleTxtDiv('id-div-txt-part-size', `part w: ${part.w}, h: ${part.h}`)
+      // changeInputValue('id-input-w', part.w * getInputValueNumber('id-input-scale-x'))
+      // changeInputValue('id-input-h', part.h * getInputValueNumber('id-input-scale-y'))
+      // partW = part.w
+      // partH = part.h
+      drawPart(ctx, part, sx, sy, isOnBound)
+
+      if (info.jrcInfo) {
+        let i = 0
+        for (const jrc of info.jrcInfo.list) {
+          const x = jrc.x + sx
+          const y = jrc.y + sy
+          let color = 'SteelBlue'
+          if (i === slcJrcI) color = 'red'
+          drawIndexCircle(ctx, i, x, y, color)
+          i++
+        }
+      }
+
+      // searching info parent
+      let pInfo = info
+      for (const inf of infoList) {
+        if (inf.type === 'part') continue
+        for (const c of inf.child) {
+          if (c.tCode === info.tCode) {
+            pInfo = inf
+            break
+          }
+        }
+      }
+      const pPart = createDvcPart(pInfo, lineSetList)
+      drawPart(previewCtx, pPart, 10, 10, false, false, previewScale)
+    }
+
+    function makePreviewMenu() {
+      const preview = document.getElementById('id-preview')
+      makePreviewScaleEdit(preview)
+    }
+
+    function makePreviewScaleEdit(preview) {
+      const container = createContainer()
+      preview.appendChild(container.border)
+      const idX = `id-input-preview-scale`
+      makeInputNum(idX, container.content, 'preview scale: ', previewScale, () => {
+        previewScale = getInputValueNumber(idX)
+        console.log(`change preview scale: ${previewScale}`)
+        draw()
+      }, 0.01)
+    }
+  </script>
+</body>
+</html>

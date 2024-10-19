@@ -57,6 +57,22 @@ function calculateToJrcInfo(partInfoList, calcJrcInfo) {
   return list
 }
 
+function changeToJrcInfo(calcJrcInfo) {
+  const list = []
+  for (const cjInfo of calcJrcInfo.list) {
+    const x = cjInfo.x
+    const y = cjInfo.y
+    list.push({
+      target: cjInfo.target,
+      key: cjInfo.key,
+      type: cjInfo.jrcType,
+      x: x,
+      y: y
+    })
+  }
+  return list
+}
+
 function moveByJrcInfo(partInfoList, jrcInfoList) {
   for (const jrcInfo of jrcInfoList) {
     if (jrcInfo.type === 'm') {
@@ -65,8 +81,8 @@ function moveByJrcInfo(partInfoList, jrcInfoList) {
       const mPartInfo = partInfoList.find(info => info.tCode === jrcInfo.target)
       mPartInfo.x = gPartInfo.x + gJrcInfo.x - jrcInfo.x
       mPartInfo.y = gPartInfo.y + gJrcInfo.y - jrcInfo.y
-      console.log(`x: ${mPartInfo.x} = ${gPartInfo.x} + ${gJrcInfo.x} - ${jrcInfo.x}`)
-      console.log(`y: ${mPartInfo.y} = ${gPartInfo.y} + ${gJrcInfo.y} - ${jrcInfo.y}`)
+      // console.log(`x: ${mPartInfo.x} = ${gPartInfo.x} + ${gJrcInfo.x} - ${jrcInfo.x}`)
+      // console.log(`y: ${mPartInfo.y} = ${gPartInfo.y} + ${gJrcInfo.y} - ${jrcInfo.y}`)
     }
   }
 }
@@ -95,8 +111,7 @@ function calculatePartSize(partInfo) {
 }
 
 function moveAutoJoin(partInfo, calcJrcInfo) {
-  // 0. auto calculate jrc (joint x y)
-  const jrcInfoList = calculateToJrcInfo(partInfo.child, calcJrcInfo)
+  const jrcInfoList = changeToJrcInfo(calcJrcInfo)
 
   // 1. m to g
   moveByJrcInfo(partInfo.child, jrcInfoList)
@@ -121,399 +136,93 @@ function moveAutoJoin(partInfo, calcJrcInfo) {
   calculatePartSize(partInfo)
 }
 
-function createDevicePart(deviceSet, lineSetList) {
-  const calcJrc = {
-    uCode: `calc-jrc-${deviceSet.uCode}`,
-    list: structuredClone(deviceSet.calcJrcInfo.list)
-  }
+// info: dvcSrtInfo
+// {
+//     uCode: `dvc-srt-${type}-${getCurrentDateUCode()}`,
+//     tCode: tCode,
+//     type: type, // device / part
+//     lineUCode: '',
+//     jrcInfo: null, // has -> override parent calcJrcInfo
+//     transInfo: null, // in device -> apply to child
+//     calcJrcInfo: null, // device
+//     child: [] // device: device has part or device
+//  }
+function createDvcPart(info, lineSetList) {
   const part = {
-    uCode: deviceSet.uCode,
+    uCode: `part-${info.tCode}-${getCurrentDateUCode()}`,
     w: 100,
     h: 100,
     x: 0,
     y: 0,
-    tCode: deviceSet.tCode,
+    tCode: info.tCode,
     lineInfo: null,
     child: []
   }
 
-  for (const c of deviceSet.child) {
-    if (c.jrcInfo) {
-      for (const jrc of c.jrcInfo.list) {
-        const oJrc = calcJrc.list.find(j => j.target === jrc.target && j.key === jrc.key)
-        oJrc.scx = jrc.scx
-        oJrc.scy = jrc.scy
-      }
+  if (info.lineUCode.length > 0) {
+    const lineSet = lineSetList.find(s => s.split('/')[0] === info.lineUCode)
+    if (lineSet) {
+      const line = createSimpleLineInfo(lineSet)
+      part.lineInfo = createLinePointFromLineInfo(line)
+      console.log(part)
     }
-    const lineSet = lineSetList.find(s => s.split('/')[0] === c.lineUCode)
-    let cLine = createSimpleLineInfo(lineSet)
-    if (c.transInfo) {
-      for (const tr of c.transInfo.list) {
-        if (tr.type === 'scale') {
-          cLine = createScaledLineInfo(cLine, tr.scaleX, tr.scaleY)
-        }
-        if (tr.type === 'rotate') {
-          cLine = createRotateLineInfo(cLine, degreeToRadian(tr.degree))
-          fitSimpleLineInfo(cLine)
+  }
+  if (info.transInfo) {
+    for (const tr of info.transInfo.list) {
+      if (tr.type === 'scale') {
+        if (part.lineInfo) {
+          part.lineInfo = createScaledLineInfo(part.lineInfo, tr.scaleX, tr.scaleY)
+          part.lineInfo = createLinePointFromLineInfo(part.lineInfo)
         }
       }
-    }
-    const cPart = createSimplePartInfo(c.uCode, c.tCode, cLine)
-    part.child.push(cPart)
-  }
-  moveAutoJoin(part, calcJrc)
-
-  return part
-}
-
-function createDeviceGroupPart(groupSet, lineSetList) {
-  const calcJrc = {
-    uCode: `calc-jrc-${groupSet.uCode}`,
-    list: structuredClone(groupSet.calcJrcInfo.list)
-  }
-  console.log(calcJrc)
-  const part = {
-    uCode: groupSet.uCode,
-    w: 100,
-    h: 100,
-    x: 0,
-    y: 0,
-    tCode: groupSet.tCode,
-    lineInfo: null,
-    child: []
-  }
-  for (const deviceSet of groupSet.child) {
-    let p
-    if (deviceSet.type === 'device-group') {
-      p = createDeviceGroupPart(deviceSet, lineSetList)
-    } else { // device
-      console.log(deviceSet.type)
-      p = createDevicePart(deviceSet, lineSetList)
-    }
-    part.child.push(p)
-
-    if (groupSet.childInfo) {
-      const cInfo = groupSet.childInfo.list.find(ci => ci.target === deviceSet.tCode)
-      const jrcInfo = calcJrc.list.find(j => j.target === cInfo.target && j.key === cInfo.key)
-      const cPart = p.child.find(c => c.tCode === cInfo.cTarget)
-      let scx = jrcInfo.scx
-      let scy = jrcInfo.scy
-      if (cInfo.margin) {
-        scx = cPart.x / p.w
-        scy = cPart.y / p.h
-        scx += cInfo.margin.scx
-        scy += cInfo.margin.scy
+      if (tr.type === 'rotate') {
+        if (part.lineInfo) {
+          part.lineInfo = createRotateLineInfo(part.lineInfo, degreeToRadian(tr.degree))
+          fitSimpleLineInfo(part.lineInfo)
+          part.lineInfo = createLinePointFromLineInfo(part.lineInfo)
+        }
       }
-      jrcInfo.scx = scx
-      jrcInfo.scy = scy
-    }
-  }
-  moveAutoJoin(part, calcJrc)
-  return part
-}
-
-// const t00Bbr0Set = {
-//   uCode: '',
-//   tCode: 't00-b-br0',
-//   type: 'part', // device-group (unit) / device / part
-//   lineUCode: '',
-//   jrcInfo: {
-//     list: [
-//       { target: 't00-b-br0', key: 'jp-t00-b-b2-br0', jrcType: 'm', scx: 0.8, scy: 0.4 },
-//       { target: 't00-b-br0', key: 'jp-t00-b-br0-br1', jrcType: 'g', scx: 0.37, scy: 0.9 }
-//     ]
-//   },
-//   transInfo: {
-//     list: [
-//       {
-//         type: 'scale',
-//         scaleX: 0.18,
-//         scaleY: 0.18
-//       },
-//       {
-//         type: 'rotate',
-//         degree: -80
-//       }
-//     ]
-//   }
-// }
-// type: part
-// uCode/tCode/type/lineUCode/jrc num/target,key,jrcType,scx,scy
-//           /target,key, ... list /trans num/type,value,value/type,value ... list
-function createPreStrSetTypePart(preSet) {
-  let str = `${preSet.uCode}/${preSet.tCode}/${preSet.type}/${preSet.lineUCode}/${preSet.jrcInfo.list.length}`
-  for (const jrc of preSet.jrcInfo.list) {
-    str += `/${jrc.target},${jrc.key},${jrc.jrcType},${jrc.scx},${jrc.scy}`
-  }
-  if (!preSet.transInfo) {
-    str += '/0'
-  } else {
-    str += `/${preSet.transInfo.list.length}`
-    for (const trn of preSet.transInfo.list) {
-      if (trn.type === 'scale') str += `/${trn.type},${trn.scaleX},${trn.scaleY}`
-      if (trn.type === 'rotate') str += `/${trn.type},${trn.degree}`
-    }
-  }
-  return str
-}
-
-// const t00BSet = {
-//   uCode: '',
-//   tCode: 't00-b',
-//   type: 'device', // device-group (unit) / device / part
-//   child: [
-//     t00Bbr0Set, t00Bbr1Set, t00Bb2Set, t00Bb1Set, t00Bb0Set, t00Bbl0Set, t00Bbl1Set
-//   ],
-//   calcJrcInfo: {
-//     list: [ // frame set, jrc order
-//       // jrcType: m (move) / g (goal)
-//       // scx, scy: scale x, scale y
-//       { target: 't00-b-b0', key: 'jp-t00-b-b0-b1', jrcType: 'g', scx: 0.71, scy: 0.77 },
-//       { target: 't00-b-b1', key: 'jp-t00-b-b0-b1', jrcType: 'm', scx: 0.43, scy: 0.39 },
-//       { target: 't00-b-b1', key: 'jp-t00-b-b1-b2', jrcType: 'g', scx: 0.5, scy: 0.9 },
-//       { target: 't00-b-b2', key: 'jp-t00-b-b1-b2', jrcType: 'm', scx: 0.5, scy: 0.25},
-//       { target: 't00-b-b2', key: 'jp-t00-b-b2-br0', jrcType: 'g', scx: 0.1, scy: 0.7 },
-//       { target: 't00-b-b2', key: 'jp-t00-b-b2-bl0', jrcType: 'g', scx: 0.8, scy: 0.75 },
-//       { target: 't00-b-br0', key: 'jp-t00-b-b2-br0', jrcType: 'm', scx: 0.8, scy: 0.4 },
-//       { target: 't00-b-br0', key: 'jp-t00-b-br0-br1', jrcType: 'g', scx: 0.37, scy: 0.9 },
-//       { target: 't00-b-bl0', key: 'jp-t00-b-b2-bl0', jrcType: 'm', scx: 0.34, scy: 0.3 },
-//       { target: 't00-b-bl0', key: 'jp-t00-b-bl0-bl1', jrcType: 'g', scx: 0.37, scy: 0.9 },
-//       { target: 't00-b-br1', key: 'jp-t00-b-br0-br1', jrcType: 'm', scx: 0.64, scy: 0.32 },
-//       { target: 't00-b-bl1', key: 'jp-t00-b-bl0-bl1', jrcType: 'm', scx: 0.03, scy: 0.34 }
-//     ]
-//   }
-// }
-// type: device
-// uCode/tCode/type/child num/child tCode,tCode,tCode ... list/calc jrc num
-//          /target,key,jrcType,scx,scy/target,key ... list
-function createPreStrSetTypeDevice(preSet) {
-  let str = `${preSet.uCode}/${preSet.tCode}/${preSet.type}/${preSet.child.length}/`
-  for (const cSet of preSet.child) {
-    str += `${cSet.tCode},`
-  }
-  str = str.slice(0, str.length-1)
-  str += `/${preSet.calcJrcInfo.list.length}`
-  for (const jrc of preSet.calcJrcInfo.list) {
-    str += `/${jrc.target},${jrc.key},${jrc.jrcType},${jrc.scx},${jrc.scy}`
-  }
-
-  return str
-}
-
-// const t00UnitSet = {
-//   uCode: '',
-//   tCode: 't00-unit',
-//   type: 'device-group',
-//   child: [
-//     t00BSet, t00CSet
-//   ],
-//   calcJrcInfo: { // frame set, jrc order
-//     list: [
-//       // jrcType: m (move) / g (goal)
-//       // scx, scy: scale x, scale y
-//       { target: 't00-c', key: 'jp-t00-c-b', jrcType: 'g', scx: 0.5, scy: 0.9 },
-//       { target: 't00-b', key: 'jp-t00-c-b', jrcType: 'm', scx: 0.1, scy: 0.1 }
-//     ]
-//   },
-//   childInfo: { // calculate jrc list by childInfo
-//     //   child target x, y / device w, h + margin
-//     list: [
-//       {
-//         target: 't00-c',
-//         key: 'jp-t00-c-b',
-//         cTarget: 't00-c-b', // child tCode
-//         margin: { // has: scx, scy + margin
-//           scx: 0.01,
-//           scy: 0.29
-//         }
-//       },
-//       {
-//         target: 't00-b',
-//         key: 'jp-t00-c-b',
-//         cTarget: 't00-b-b0', // child tCode
-//         margin: { // has: scx, scy + margin
-//           scx: 0.01,
-//           scy: 0.01
-//         }
-//       }
-//     ]
-//   }
-// }
-// type: device-group
-// uCode/tCode/type/child num/child tCode, tCode ... list/calc jrc num
-//          /target,key,jrcType,scx,scy/target,key ... list
-//          /child info num/target,key,cTarget,margin scx,margin scy/target, key ... list
-function createPreStrSetTypeDeviceGroup(preSet) {
-  let str = `${preSet.uCode}/${preSet.tCode}/${preSet.type}/${preSet.child.length}/`
-  for (const cSet of preSet.child) {
-    str += `${cSet.tCode},`
-  }
-  str = str.slice(0, str.length-1)
-  str += `/${preSet.calcJrcInfo.list.length}`
-  for (const jrc of preSet.calcJrcInfo.list) {
-    str += `/${jrc.target},${jrc.key},${jrc.jrcType},${jrc.scx},${jrc.scy}`
-  }
-  if (preSet.childInfo) {
-    str += `/${preSet.childInfo.list.length}`
-    for (const ci of preSet.childInfo.list) {
-      str += `/${ci.target},${ci.key},${ci.cTarget}`
-      if (preSet.childInfo.margin) {
-        str += `,${preSet.childInfo.margin.scx},${preSet.childInfo.margin.scy}`
-      } else {
-        str += ',0,0'
+      if (tr.type === 'sftRI') {
+        if (part.lineInfo) {
+          part.lineInfo = createShiftRotateILineInfo(part.lineInfo, tr.ri)
+          part.lineInfo = createLinePointFromLineInfo(part.lineInfo)
+        }
+      }
+      if (tr.type === 'p4') {
+        if (part.lineInfo) {
+          const pList = transformPoints4(part.lineInfo.pointInfo.list, part.lineInfo.w, part.lineInfo.h, tr.p4Info)
+          for (let i=0; i<pList.length; i++) {
+            const p = pList[i]
+            const pp = part.lineInfo.pointInfo.list[i]
+            pp.x = p.x
+            pp.y = p.y
+          }
+          fitSimpleLineInfo(part.lineInfo)
+        }
       }
     }
   }
-  return str
-}
-
-// type: part
-// uCode/tCode/type/lineUCode/jrc num/target,key,jrcType,scx,scy
-//           /target,key, ... list /trans num/type,value,value/type,value ... list
-function createPresetPart(strSet) {
-  const strSetSplit = strSet.split('/')
-  const uCode = strSetSplit[0]
-  const tCode = strSetSplit[1]
-  const type = strSetSplit[2]
-  const lineUCode = strSetSplit[3]
-  const jrcNum = Number(strSetSplit[4])
-  const jrcStart = 5
-  const jrcInfo = { list: [] }
-  const jrcLengthI = jrcStart + jrcNum
-  for (let i=jrcStart; i<jrcLengthI; i++) {
-    const str = strSetSplit[i]
-    const split = str.split(',')
-    const target = split[0]
-    const key = split[1]
-    const jrcType = split[2]
-    const scx = Number(split[3])
-    const scy = Number(split[4])
-    jrcInfo.list.push({ target: target, key: key, jrcType: jrcType, scx: scx, scy: scy })
-  }
-  const transNum = Number(strSetSplit[jrcLengthI])
-  console.log(`transNum: ${transNum}`)
-  let transInfo = null
-  if (transNum > 0) {
-    transInfo = {
-      list: []
-    }
-    const transStart = jrcLengthI + 1
-    for (let i=transStart; i<transStart+transNum; i++) {
-      const str = strSetSplit[i]
-      const split = str.split(',')
-      const type = split[0]
-      if (type === 'scale') transInfo.list.push({ type: type, scaleX: Number(split[1]), scaleY: Number(split[2])})
-      if (type === 'rotate') transInfo.list.push({ type: type, degree: Number(split[1]) })
-    }
-  }
-  return {
-    uCode: uCode,
-    tCode: tCode,
-    type: type,
-    lineUCode: lineUCode,
-    jrcInfo: jrcInfo,
-    transInfo: transInfo
-  }
-}
-
-// type: device
-// uCode/tCode/type/child num/child tCode,tCode,tCode ... list/calc jrc num
-//          /target,key,jrcType,scx,scy/target,key ... list
-function createPresetDevice(strSet, presetList) {
-  const strSetSplit = strSet.split('/')
-  const uCode = strSetSplit[0]
-  const tCode = strSetSplit[1]
-  const type = strSetSplit[2]
-  const childNum = Number(strSetSplit[3])
-  const childStr = strSetSplit[4]
-  const childStrSplit = childStr.split(',')
-  const child = []
-  for (const tcd of childStrSplit) {
-    const preset = presetList.find(p => p.tCode === tcd)
-    child.push(preset)
-  }
-  const calcJrcNum = Number(strSetSplit[5])
-  const calcJrcStart = 6
-  const calcJrcLengthI = calcJrcStart + calcJrcNum
-  const calcJrcInfo = { list: [] }
-  for (let i=calcJrcStart; i<calcJrcLengthI; i++) {
-    const str = strSetSplit[i]
-    const split = str.split(',')
-    const target = split[0]
-    const key = split[1]
-    const jrcType = split[2]
-    const scx = Number(split[3])
-    const scy = Number(split[4])
-    calcJrcInfo.list.push({ target: target, key: key, jrcType: jrcType, scx: scx, scy: scy })
+  if (part.lineInfo) {
+    part.w = part.lineInfo.w
+    part.h = part.lineInfo.h
   }
 
-  return {
-    uCode: uCode,
-    tCode: tCode,
-    type: type,
-    child: child,
-    calcJrcInfo: calcJrcInfo
-  }
-}
+  let calcJrc
+  if (info.calcJrcInfo) calcJrc = structuredClone(info.calcJrcInfo)
 
-// type: device-group
-// uCode/tCode/type/child num/child tCode, tCode ... list/calc jrc num
-//          /target,key,jrcType,scx,scy/target,key ... list
-//          /child info num/target,key,cTarget,margin scx,margin scy/target, key ... list
-function createPresetDeviceGroup(strSet, presetList) {
-  const strSetSplit = strSet.split('/')
-  const uCode = strSetSplit[0]
-  const tCode = strSetSplit[1]
-  const type = strSetSplit[2]
-  const childNum = Number(strSetSplit[3])
-  const childStr = strSetSplit[4]
-  const childStrSplit = childStr.split(',')
-  const child = []
-  for (const tcd of childStrSplit) {
-    const preset = presetList.find(p => p.tCode === tcd)
-    child.push(preset)
-  }
-  const calcJrcNum = Number(strSetSplit[5])
-  const calcJrcStart = 6
-  const calcJrcLengthI = calcJrcStart + calcJrcNum
-  const calcJrcInfo = { list: [] }
-  for (let i=calcJrcStart; i<calcJrcLengthI; i++) {
-    const str = strSetSplit[i]
-    const split = str.split(',')
-    const target = split[0]
-    const key = split[1]
-    const jrcType = split[2]
-    const scx = Number(split[3])
-    const scy = Number(split[4])
-    calcJrcInfo.list.push({ target: target, key: key, jrcType: jrcType, scx: scx, scy: scy })
-  }
+  for (const c of info.child) {
+    part.child.push(createDvcPart(c, lineSetList))
 
-  const childInfoNum = Number(strSetSplit[calcJrcLengthI])
-  let childInfo = null
-  if (childInfoNum > 0) {
-    childInfo = {
-      list: []
-    }
-    const childInfoStart = calcJrcLengthI + 1
-    const childInfoLengthI = childInfoStart + childInfoNum
-    for (let i=childInfoStart; i<childInfoLengthI; i++) {
-      const str = strSetSplit[i]
-      const split = str.split(',')
-      const target = split[0]
-      const key = split[1]
-      const cTarget = split[2]
-      const marginScx = Number(split[3])
-      const marginScy = Number(split[4])
-      childInfo.list.push({ target: target, key: key, cTarget: cTarget, margin: { scx: marginScx, scy: marginScy }})
+    if (calcJrc && c.jrcInfo) {
+      for (const cj of c.jrcInfo.list) {
+        const clcJ = calcJrc.list.find(j => j.key === cj.key && j.target === cj.target)
+        clcJ.x = cj.x
+        clcJ.y = cj.y
+      }
     }
   }
 
-  return {
-    uCode: uCode,
-    tCode: tCode,
-    type: type,
-    child: child,
-    calcJrcInfo: calcJrcInfo,
-    childInfo: childInfo
-  }
+  if (calcJrc) moveAutoJoin(part, calcJrc)
+
+  return part
 }

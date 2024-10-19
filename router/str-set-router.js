@@ -1,4 +1,5 @@
 const express = require('express')
+const cors = require('cors')
 const router = express.Router()
 const strSetManager = require('../mdl/str-set-sql3-manager')
 
@@ -11,6 +12,7 @@ router.use(function timeLog(req, res, next) {
   console.log(`[${new Date()}] ${req.baseUrl + req.path} ${req.method}`)
   next()
 })
+router.use(cors())
 
 router.get('/', (req, res) => {
   res.send('str-set')
@@ -29,43 +31,43 @@ router.post('/add-str', (req, res) => {
   // res.send(`uCode: ${uCode}, str: ${str}, dsg: ${dsg}, type: ${type}, memo0: ${memo0}, memo1: ${memo1}, memo2: ${memo2}`)
   strSetManager.addStr(uCode, str, dsg, type, memo0, memo1, memo2, (result) => {
     console.log(result)
-    res.send(JSON.stringify(result))
+    res.json(result)
   })
 })
 
 router.get('/line-set-list', (req, res) => {
   strSetManager.getLineSetList((result) => {
-    res.send(JSON.stringify(result))
+    res.json(result)
   })
 })
 
 router.get('/line-set-list/:memo1', (req, res) => {
   strSetManager.getLineSetListByMemo1((result) => {
-    res.send(JSON.stringify(result))
+    res.json(result)
   }, req.params.memo1)
 })
 
 router.get('/line-point-set-list', (req, res) => {
   strSetManager.getLinePointSetList((result) => {
-    res.send(JSON.stringify(result))
+    res.json(result)
   })
 })
 
 router.get('/coloring-line-point-set-list', (req, res) => {
   strSetManager.getColoringAndLinePoint((result) => {
-    res.send(JSON.stringify(result))
+    res.json(result)
   })
 })
 
 router.get('/coloring-line-set-list', (req, res) => {
   strSetManager.getColoringAndLine((result) => {
-    res.send(JSON.stringify(result))
+    res.json(result)
   })
 })
 
 router.get('/place-line-set-list', (req, res) => {
   strSetManager.getPlaceLineSetList((result) => {
-    res.send(JSON.stringify(result))
+    res.json(result)
   })
 })
 
@@ -73,13 +75,19 @@ router.get('/line-set/:uCode', (req, res) => {
   const uCode = req.params.uCode
   console.log(uCode)
   strSetManager.getLineSet(uCode, (result) => {
-    res.send(JSON.stringify(result))
+    res.json(result)
   })
 })
 
 router.get('/preset-bundle-set-list', (req, res) => {
   strSetManager.getPresetBundleSetList((result) => {
-    res.send(JSON.stringify(result))
+    res.json(result)
+  })
+})
+
+router.get('/dvc-srt-bundle-set-list', (req, res) => {
+  strSetManager.getDvcSrtBundleSetList((result) => {
+    res.json(result)
   })
 })
 

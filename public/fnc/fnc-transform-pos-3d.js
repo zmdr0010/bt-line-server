@@ -42,7 +42,7 @@ function rotateAb(radian, a, b, ca=0, cb=0, sa=0, sb=0) {
 // info: spLineInfo
 // axis: x / y / z
 function rotateInfoXYZ(info, radian, axis) {
-  const uCode = `${info.uCode}-${axis}-radian-${radian}`
+  const uCode = `line-rotate-3d-${getCurrentDateUCode()}`
   const list = []
   let minX = 1000000000
   let minY = 1000000000

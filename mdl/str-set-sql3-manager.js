@@ -7,7 +7,8 @@ let dbPath = ''
 // dsg: designation (str split / -> index item designation)
 // type: line, line-coloring, line-coloring-rgb, line-point, line-part(place merge + coloring)
 //       coloring, coloring-rgb, place-line, palette, palette-rgb
-//       preset-bundle
+//       preset-bundle,
+//       dvc-srt(device-structure), dvc-srt-bundle, dvc-set
 
 //// making-line-point / coloring-line-point
 ////    line-point, coloring(1, black) (memo0: line-point) -> line (memo0: line-point,line-point uCode) <- record origin
@@ -157,6 +158,11 @@ function getPresetBundleSetList(callback) {
   getSetListByType('preset-bundle', callback)
 }
 exports.getPresetBundleSetList = getPresetBundleSetList
+
+function getDvcSrtBundleSetList(callback) {
+  getSetListByType('dvc-srt-bundle', callback)
+}
+exports.getDvcSrtBundleSetList = getDvcSrtBundleSetList
 
 function getSetListByType(type, callback) {
   const info = {
