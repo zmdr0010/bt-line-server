@@ -116,3 +116,19 @@ function drawPart(ctx, partInfo, x, y, isOnBound=false, isOnCircle=false, scale=
     drawPart(ctx, c, sx, sy, isOnBound, isOnCircle, scale)
   }
 }
+
+function drawRawSimple(ctx, info, sx, sy, size) {
+  for (let i=0; i<info.raw.length; i++) {
+    const rw = info.raw[i]
+    const c = i % info.column
+    const r = Math.floor(i / info.column)
+    const x = c * size + sx
+    const y = r * size + sy
+    if (rw > 0) {
+      ctx.beginPath()
+      ctx.lineWidth = 1
+      ctx.strokeStyle = 'black'
+      ctx.strokeRect(x, y, size, size)
+    }
+  }
+}

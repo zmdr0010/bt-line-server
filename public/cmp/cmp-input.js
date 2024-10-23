@@ -51,6 +51,23 @@ function makeInputNum(id, container, labelTxt, value, onChange, step='1') {
   container.appendChild(div)
 }
 
+function makeInputText(id, container, labelTxt, onChange=null) {
+  const div = createSubDiv()
+  const input = document.createElement('input')
+  input.type = 'text'
+  input.id = id
+  input.style.margin = '2px'
+  input.onchange = onChange
+  const clearBtn = document.createElement('button')
+  clearBtn.style.margin = '2px'
+  clearBtn.innerText = 'X'
+  clearBtn.onclick = () => clearInput(id)
+  div.innerText = `${labelTxt}`
+  div.appendChild(input)
+  div.appendChild(clearBtn)
+  container.appendChild(div)
+}
+
 // one file
 function makeInputFile(id, container, labelTxt, accept, onLoad) {
   const div = createSubDiv()

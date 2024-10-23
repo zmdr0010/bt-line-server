@@ -158,7 +158,7 @@ function calculateLineInfoSize(info) {
   }
   // info.w = Math.abs(maxX - minX)
   // info.h = Math.abs(maxY - minY)
-  console.log(`minX: ${minX}, minY: ${minY}`)
+  // console.log(`minX: ${minX}, minY: ${minY}`)
   info.w = Math.abs(maxX - minX) + minX
   info.h = Math.abs(maxY - minY) + minY
 
@@ -334,4 +334,16 @@ function createLinePointFromLineInfo(info) {
     child: []
   }
   return linePoint
+}
+
+function createLinePointFromOutlinePList(pList, color='white', lineColor='black', lineW=1) {
+  let set = `line-${getCurrentDateUCode()}/100/100/2/0/${color}/`
+  for (const p of pList) set += `${p.x},${p.y},`
+  set = set.slice(0, set.length-1)
+  set += `/${lineW}/${lineColor}/`
+  for (const p of pList) set += `${p.x},${p.y},`
+  set = set.slice(0, set.length-1)
+  const line = createSimpleLineInfo(set)
+  fitSimpleLineInfo(line)
+  return createLinePointFromLineInfo(line)
 }

@@ -78,4 +78,12 @@ router.get('/making-dvc-srt-bundle', (req, res) => {
   res.render('making-dvc-srt-bundle.html')
 })
 
+router.get('/making-simple-raw', (req, res) => {
+  res.render('making-simple-raw.html')
+})
+
+router.get('/raw-list', (req, res) => {
+  res.render('raw-list')
+})
+
 exports.router = router

@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>raw list</title>
+
+  <style>
+    #snackbar {
+      visibility: hidden;
+      min-width: 250px;
+      margin-left: -125px;
+      background-color: #333;
+      color: #fff;
+      text-align: center;
+      border-radius: 2px;
+      padding: 16px;
+      position: fixed;
+      z-index: 1;
+      left: 50%;
+      bottom: 30px;
+    }
+    #snackbar.show {
+      visibility: visible;
+      -webkit-animation: fadein 0.5s, fadeout 0.5s 2.5s;
+      animation: fadein 0.5s, fadeout 0.5s 2.5s
+    }
+    @-webkit-keyframes fadein {
+      from {bottom: 0; opacity: 0}
+      to {bottom: 30px; opacity: 1}
+    }
+    @keyframes fadein {
+      from {bottom: 0; opacity: 0}
+      to {bottom: 30px; opacity: 1}
+    }
+    @-webkit-keyframes fadeout {
+      from {bottom: 30px; opacity: 1}
+      to {bottom: 0; opacity: 0}
+    }
+    @keyframes fadeout {
+      from {bottom: 30px; opacity: 1}
+      to {bottom: 0; opacity: 0}
+    }
+  </style>
+</head>
+<body onload="init()">
+  <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr" id="id-container"></div>
+  <div id="snackbar">Some text some message...</div>
+
+  <script type="text/javascript" src="fnc/fnc-outline.js"></script>
+  <script type="text/javascript" src="fnc/fnc-outline-edge.js"></script>
+  <script type="text/javascript" src="fnc/fnc-save.js"></script>
+  <script type="text/javascript" src="fnc/fnc-line-info.js"></script>
+  <script type="text/javascript" src="fnc/fnc-merge-line-info.js"></script>
+  <script type="text/javascript" src="fnc/fnc-draw.js"></script>
+  <script type="text/javascript" src="fnc/fnc-divide-line.js"></script>
+  <script type="text/javascript" src="fnc/fnc-transform-line-info.js"></script>
+  <script type="text/javascript" src="fnc/fnc-raw-info.js"></script>
+  <script>
+    let rawSetList = []
+
+    let szw = 20
+    let szh = 20
+
+    let isDrawingIndex = false
+
+    function init() {
+      const urlPrm = new URLSearchParams(window.location.search)
+      const prmIsOn = urlPrm.get('isOn')
+      if (prmIsOn) isDrawingIndex = (prmIsOn.toLowerCase() === 'true')
+
+      const request = new Request('/str-set/raw-set-list')
+      fetch(request).then((response) => response.json()).then((json) => {
+        console.log(json)
+        if (json.code === 'list') {
+          for (const str of json.list) {
+            rawSetList.push(str)
+          }
+          makeList()
+        }
+      })
+    }
+
+    function makeList() {
+      const container = document.getElementById('id-container')
+      for (const set of rawSetList) {
+        const rawInfo = createRawInfo(set)
+        const pList = calculatePList(rawInfo)
+        const linePList = []
+        makeLinePList(pList[0], linePList, szw, szh)
+        const w = rawInfo.column * szw
+        const h = rawInfo.row * szh
+        const canvas = document.createElement('canvas')
+        canvas.width = w + 20
+        canvas.height = h + 20
+        const ctx = canvas.getContext('2d')
+        const line = createLinePointFromOutlinePList(linePList)
+        drawLineInfo(ctx, line, 10, 10)
+        if (isDrawingIndex) {
+          let i = 0
+          for (const p of linePList) {
+            drawIndexCircle(ctx, i, p.x + 10, p.y + 10)
+            i++
+          }
+        }
+        const div = document.createElement('div')
+        div.appendChild(canvas)
+        const label = document.createElement('label')
+        label.innerText = rawInfo.uCode
+        div.appendChild(label)
+        container.appendChild(div)
+
+        div.addEventListener('click', () => {
+          navigator.clipboard.writeText(label.innerText)
+
+          const snackbar = document.getElementById('snackbar')
+          snackbar.innerText = `copied: ${label.innerText}`
+          snackbar.className = 'show'
+          setTimeout(() => { snackbar.className = snackbar.className.replace('show', '') }, 3000)
+        })
+      }
+    }
+  </script>
+</body>
+</html>

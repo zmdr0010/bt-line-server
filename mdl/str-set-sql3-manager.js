@@ -9,6 +9,7 @@ let dbPath = ''
 //       coloring, coloring-rgb, place-line, palette, palette-rgb
 //       preset-bundle,
 //       dvc-srt(device-structure), dvc-srt-bundle, dvc-set
+//       raw-set, edit-p-set, place-edit-p-set
 
 //// making-line-point / coloring-line-point
 ////    line-point, coloring(1, black) (memo0: line-point) -> line (memo0: line-point,line-point uCode) <- record origin
@@ -163,6 +164,11 @@ function getDvcSrtBundleSetList(callback) {
   getSetListByType('dvc-srt-bundle', callback)
 }
 exports.getDvcSrtBundleSetList = getDvcSrtBundleSetList
+
+function getRawSetList(callback) {
+  getSetListByType('raw-set', callback)
+}
+exports.getRawSetList = getRawSetList
 
 function getSetListByType(type, callback) {
   const info = {

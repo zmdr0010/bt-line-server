@@ -91,4 +91,10 @@ router.get('/dvc-srt-bundle-set-list', (req, res) => {
   })
 })
 
+router.get('/raw-set-list', (req, res) => {
+  strSetManager.getRawSetList((result) => {
+    res.json(result)
+  })
+})
+
 exports.router = router

@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>making simple raw</title>
+  <style>
+    .menu {
+      height: 100%;
+      width: 30%;
+      position: fixed;
+      z-index: 1;
+      overflow-x: hidden;
+    }
+    .main {
+      height: 100%;
+      width: calc(100% - 30% - 8px - 16px - 400px);
+      position: fixed;
+      z-index: 1;
+      overflow-x: hidden;
+      left: calc(30%);
+    }
+    .preview {
+      width: 400px;
+      height: 100%;
+      /*background-color: lightgray;*/
+      position: fixed;
+      right: 0;
+      /*top: 0;*/
+      z-index: 1;
+    }
+  </style>
+</head>
+<body onload="init()">
+  <div class="menu" id="id-menu">
+    <div style="margin: 20px">
+      border: <input id="id-checkbox-border" type="checkbox" onchange="changeBorder()" />
+      <button onclick="drawRaw()">draw</button>
+      <button onclick="print()">print</button>
+      <button onclick="save()">save</button>
+      <button onclick="saveToServer()">save to server</button>
+      <label id="id-label-result"></label>
+    </div>
+    <div style="margin: 20px" id="id-container"></div>
+  </div>
+  <div class="main" id="id-main">
+    <div style="margin: 20px">
+      index circle: <input id="id-checkbox-index-circle" type="checkbox" onchange="changeIsOnIndexCircle()" />
+    </div>
+    <div style="margin: 20px">
+      <canvas style="border: solid 1px; margin: 10px" id="id-canvas-raw"></canvas>
+    </div>
+  </div>
+  <div class="preview" id="id-preview"></div>
+
+  <script type="text/javascript" src="fnc/fnc-outline.js"></script>
+  <script type="text/javascript" src="fnc/fnc-outline-edge.js"></script>
+  <script type="text/javascript" src="fnc/fnc-outline-edit-p-set.js"></script>
+  <script type="text/javascript" src="fnc/fnc-save.js"></script>
+  <script type="text/javascript" src="fnc/fnc-line-info.js"></script>
+  <script type="text/javascript" src="fnc/fnc-merge-line-info.js"></script>
+  <script type="text/javascript" src="fnc/fnc-draw.js"></script>
+  <script type="text/javascript" src="fnc/fnc-divide-line.js"></script>
+  <script type="text/javascript" src="fnc/fnc-transform-line-info.js"></script>
+  <script type="text/javascript" src="fnc/fnc-raw-info.js"></script>
+  <script type="text/javascript" src="cmp/cmp-btn.js"></script>
+  <script type="text/javascript" src="cmp/cmp-common.js"></script>
+  <script type="text/javascript" src="cmp/cmp-input.js"></script>
+  <script type="text/javascript" src="cmp/cmp-raw-drawer.js"></script>
+  <script type="text/javascript" src="cmp/cmp-select.js"></script>
+  <script>
+    let rawDrawer
+    let rawCanvas
+    let rawCtx
+    let isOnIndexCircle = false
+
+    let column = 20
+    let row = 20
+    let szw = 20
+    let szh = 20
+
+    function init() {
+      const main = document.getElementById('id-main')
+      rawCanvas = document.getElementById('id-canvas-raw')
+      rawCanvas.width = main.offsetWidth - 40 * 2
+      rawCanvas.height = main.offsetHeight - 40 * 4
+      rawCtx = rawCanvas.getContext('2d')
+
+      const container = document.getElementById('id-container')
+      rawDrawer = CmpRawDrawer.create(column, row, szw, szh)
+      const drawerDiv = rawDrawer.init()
+      container.appendChild(drawerDiv)
+
+      document.addEventListener('keydown', (e) => {
+        rawDrawer.onKeyDown(e)
+      })
+    }
+
+    function drawRaw() {
+      rawCtx.clearRect(0, 0, rawCanvas.width, rawCanvas.height)
+
+      const rawInfo = rawDrawer.getRawInfo(false)
+      if (!rawInfo) return
+      console.log(rawInfo)
+      const pList = calculatePList(rawInfo)
+      const linePList = []
+      makeLinePList(pList[0], linePList, 20, 20)
+      drawIndexPList(rawCtx, linePList, 10, 10, 'white')
+    }
+
+    function changeBorder() {
+      rawDrawer.changeBorder(getChecked('id-checkbox-border'))
+    }
+
+    function changeIsOnIndexCircle() {
+      isOnIndexCircle = getChecked('id-checkbox-index-circle')
+    }
+
+    function drawIndexPList(ctx, pList, sx, sy, color) {
+      drawLinePList(ctx, pList, sx, sy, color)
+      let i = 0
+      const last = pList.length - 1
+      if (isOnIndexCircle) {
+        for (const p of pList) {
+          if (i === last) break
+          drawIndexCircle(ctx, i, p.x + sx, p.y + sy)
+          i++
+        }
+      }
+    }
+
+    function drawLinePList(ctx, list, sx, sy, color='black') {
+      let isFirst = true
+      ctx.beginPath()
+      ctx.strokeStyle = 'black'
+      ctx.lineWidth = 1
+      ctx.fillStyle = color
+      for (const p of list) {
+        const x = p.x + sx
+        const y = p.y + sy
+        if (isFirst) {
+          isFirst = false
+          ctx.moveTo(x, y)
+        } else {
+          ctx.lineTo(x, y)
+        }
+      }
+      ctx.fill()
+      ctx.stroke()
+    }
+
+    function print() {
+      const rawInfo = rawDrawer.getRawInfo()
+      console.log(rawInfo)
+      if (!rawInfo) return
+      console.log(createRawStrSet(rawInfo))
+    }
+
+    function save() {
+      const rawInfo = rawDrawer.getRawInfo()
+      if (!rawInfo) return
+      const str = createRawStrSet(rawInfo)
+      console.log(str)
+      saveString(rawInfo.uCode, str)
+    }
+
+    function saveToServer() {
+      const rawInfo = rawDrawer.getRawInfo()
+      if (!rawInfo) return
+      const str = createRawStrSet(rawInfo)
+      const rawSave = {
+        uCode: rawInfo.uCode,
+        str: str,
+        type: 'raw-set',
+        dsg: '',
+        memo0: '',
+        memo1: '',
+        memo2: '',
+      }
+
+      const request = new Request('/str-set/add-str', {
+        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', body: JSON.stringify(rawSave)
+      })
+      fetch(request).then(response => {
+        return response.json()
+      }).then(result => {
+        console.log(result)
+        changeSimpleTxtDiv('id-label-result', ` result: ${result.code}`)
+      })
+    }
+  </script>
+</body>
+</html>

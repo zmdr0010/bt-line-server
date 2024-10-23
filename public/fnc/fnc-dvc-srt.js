@@ -4,7 +4,7 @@ function createDvcSrtInfoListByTCodeSet(setList) {
 
   // set jrcInfo
   for (const info of result) {
-    if (info.type === 'part') continue
+    if (info.type === 'part' || !info.calcJrcInfo) continue
     for (const c of info.child) {
       c.jrcInfo = { list: [] }
       for (const cJrc of info.calcJrcInfo.list) {
@@ -48,15 +48,17 @@ function createDvcSrtInfoByTCodeSet(set, infoList) {
     result.child.push(c)
   }
   const keyNum = Number(split[3])
-  const keyStr = split[4]
-  const keyStrSplit = keyStr.split(',')
-  result.calcJrcInfo = { list: [] }
-  for (const key of keyStrSplit) {
-    const keySplit = key.split('_')
-    const g = keySplit[0]
-    const m = keySplit[1]
-    result.calcJrcInfo.list.push({ target: g, key: key, jrcType: 'g', x: 0, y: 0 })
-    result.calcJrcInfo.list.push({ target: m, key: key, jrcType: 'm', x: 0, y: 0 })
+  if (keyNum > 0) {
+    const keyStr = split[4]
+    const keyStrSplit = keyStr.split(',')
+    result.calcJrcInfo = { list: [] }
+    for (const key of keyStrSplit) {
+      const keySplit = key.split('_')
+      const g = keySplit[0]
+      const m = keySplit[1]
+      result.calcJrcInfo.list.push({ target: g, key: key, jrcType: 'g', x: 0, y: 0 })
+      result.calcJrcInfo.list.push({ target: m, key: key, jrcType: 'm', x: 0, y: 0 })
+    }
   }
   return result
 }
