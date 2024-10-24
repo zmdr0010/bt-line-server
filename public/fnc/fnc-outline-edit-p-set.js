@@ -68,7 +68,7 @@ function createEditPPlaceStrSet(info) {
   return str
 }
 
-function createEditPPlaceInfo(set, pSetInfoList) {
+function createEditPPlaceInfo(set, pSetInfoList, isNew=false) {
   const split = set.split('/')
   const uCode = split[0]
   const num = Number(split[1])
@@ -79,7 +79,9 @@ function createEditPPlaceInfo(set, pSetInfoList) {
     const pSetUCode = strSplit[0]
     const x = Number(strSplit[1])
     const y = Number(strSplit[2])
-    const pSet = pSetInfoList.find(p => p.uCode === pSetUCode)
+    let pSet = pSetInfoList.find(p => p.uCode === pSetUCode)
+    if (!pSet) pSet = createEmptyPlaceInfo()
+    if (isNew) pSet.uCode = `edit-p-set-${getCurrentDateUCode()}-${i-2}`
     list.push({ x: x, y: y, pSetInfo: pSet, lineInfo: null })
   }
   return {
@@ -152,4 +154,24 @@ function makeLine(placeInfo, rawSetList) {
   line.x = placeInfo.x
   line.y = placeInfo.y
   placeInfo.lineInfo = line
+}
+
+function createEmptyPlaceInfo() {
+  return {
+    x: 0,
+    y: 0,
+    pSetInfo: {
+      uCode: `edit-p-set-${getCurrentDateUCode()}`,
+      rawUCode: '',
+      szw: 20,
+      szh: 20,
+      color: 'white',
+      lineColor: 'black',
+      lineWidth: 1,
+      editType: 'none',
+      iList: [],
+      edgeTypeList: []
+    },
+    lineInfo: null
+  }
 }

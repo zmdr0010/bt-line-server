@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>raw simple edit</title>
+</head>
+<body onload="init()">
+  <div style="margin: 10px" id="id-menu">
+  </div>
+  <div style="margin: 10px"><canvas style="margin: 10px; border: solid 1px" id="id-canvas"></canvas></div>
+
+  <script type="text/javascript" src="cmp/cmp-btn.js"></script>
+  <script type="text/javascript" src="cmp/cmp-common.js"></script>
+  <script type="text/javascript" src="cmp/cmp-input.js"></script>
+  <script type="text/javascript" src="cmp/cmp-raw-drawer.js"></script>
+  <script type="text/javascript" src="cmp/cmp-select.js"></script>
+  <script type="text/javascript" src="fnc/fnc-save.js"></script>
+  <script type="text/javascript" src="fnc/fnc-draw.js"></script>
+  <script type="text/javascript" src="fnc/fnc-raw-info.js"></script>
+  <script type="text/javascript" src="fnc/fnc-transform-raw.js"></script>
+  <script type="text/javascript" src="fnc/fnc-raw-mtx.js"></script>
+  <script>
+    let rawSetList = []
+
+    let canvas
+    let ctx
+
+    let rawInfo
+    let sx = 10
+    let sy = 10
+    let szw =20
+    let szh = 20
+    let column = 30
+    let row = 30
+    let rawDrawer
+
+    function init() {
+      canvas = document.getElementById('id-canvas')
+      canvas.width = window.innerWidth - 20 * 3
+      canvas.height = window.innerHeight - 20 * 3
+      ctx = canvas.getContext('2d')
+
+      const request = new Request('/str-set/raw-set-list')
+      fetch(request).then((response) => response.json()).then((json) => {
+        console.log(json)
+        if (json.code === 'list') {
+          for (const str of json.list) {
+            rawSetList.push(str)
+          }
+          makeMenu()
+
+          const menu = document.getElementById('id-menu')
+          rawDrawer = CmpRawDrawer.create(column, row, szw, szh)
+          const drawerDiv = rawDrawer.init()
+          menu.appendChild(drawerDiv)
+
+          document.addEventListener('keydown', (e) => {
+            rawDrawer.onKeyDown(e)
+          })
+        }
+      })
+    }
+
+    function makeMenu() {
+      const menu = document.getElementById('id-menu')
+      makeInputRawUCode(menu)
+      makeEditDrawer(menu)
+    }
+
+    function makeInputRawUCode(menu) {
+      const container = createContainer()
+      menu.appendChild(container.border)
+      makeInputTextBtn('id-input-raw-ucode', container.content, 'raw uCode: ', 'load',
+        () => {
+          loadRaw()
+        })
+      // list: [ { id: '', labelTxt: '', onClick: null } ]
+      makeBtnGroup(container.content, [
+        { id: 'id-btn-draw', labelTxt: 'draw',
+          onClick: () => {
+            rawInfo = rawDrawer.getRawInfo()
+            draw()
+        } },
+        { id: 'id-btn-print', labelTxt: 'print', onClick: () => { print() } },
+        { id: 'id-btn-save', labelTxt: 'save', onClick: () => { save() } },
+        { id: 'id-btn-save-to-server', labelTxt: 'save to server', onClick: () => { saveToServer() } }
+      ])
+      makeSimpleTxtDiv('id-label-result', container.content, '')
+    }
+
+    function makeEditDrawer(menu) {
+      const container = createContainer()
+      menu.appendChild(container.border)
+      makeInputCheckBox(container.content, 'id-checkbox-border', 'border on: ', false,
+        () => {
+          changeBorder()
+        })
+      makeInputNum('id-input-column', container.content, 'column: ', column, () => {
+        column = getInputValueNumber('id-input-column')
+      })
+      makeInputNum('id-input-row', container.content, 'row: ', row, () => {
+        row = getInputValueNumber('id-input-row')
+      })
+      makeInputNum('id-input-szw', container.content, 'szw: ', szw, () => {
+        szw = getInputValueNumber('id-input-szw')
+      })
+      makeInputNum('id-input-szh', container.content, 'szh: ', szh, () => {
+        szh = getInputValueNumber('id-input-szh')
+      })
+      makeBtnGroup(container.content, [{ id: 'id-btn-drawer-change', labelTxt: 'drawer change',
+        onClick: () => {
+          rawDrawer.changeDrawerSize(column, row, szw, szh)
+        } }])
+    }
+
+    function loadRaw() {
+      const uCode = getInputValue('id-input-raw-ucode')
+      const rawSet = rawSetList.find(s => s.split('/')[0] === uCode)
+      rawInfo = createRawInfo(rawSet)
+      rawDrawer.update(rawInfo.column, rawInfo.row, rawInfo.raw)
+      draw()
+    }
+
+    function print() {
+      console.log(rawInfo)
+    }
+
+    function save() {
+      if (!rawInfo) return
+      const rawSet = createRawStrSet(rawInfo)
+      saveString(rawInfo.uCode, rawSet)
+    }
+
+    function saveToServer() {
+      if (!rawInfo) return
+      const str = createRawStrSet(rawInfo)
+      const rawSave = {
+        uCode: rawInfo.uCode,
+        str: str,
+        type: 'raw-set',
+        dsg: '',
+        memo0: '',
+        memo1: '',
+        memo2: '',
+      }
+
+      const request = new Request('/str-set/add-str', {
+        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', body: JSON.stringify(rawSave)
+      })
+      fetch(request).then(response => {
+        return response.json()
+      }).then(result => {
+        console.log(result)
+        changeSimpleTxtDiv('id-label-result', ` result: ${result.code}`)
+      })
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+      if (rawInfo) drawRawSimple(ctx, rawInfo, sx, sy, szw, szh)
+    }
+
+    function changeBorder() {
+      rawDrawer.changeBorder(getChecked('id-checkbox-border'))
+    }
+  </script>
+</body>
+</html>

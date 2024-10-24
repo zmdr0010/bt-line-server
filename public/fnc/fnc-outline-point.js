@@ -62,30 +62,38 @@ function editOutPInfoList(pList, szw, szh, iList, editType='remove-p') {
   const oPList = createOutPInfoList(pList, szw, szh)
   const list = []
   for (const p of oPList) {
-    console.log(p)
     const rp = { x: p.x, y: p.y }
-    const addPList = []
-    let isAdding = false
-    for (const i of iList) if (i === p.i) isAdding = true
-    if (isAdding) {
+    // const addPList = []
+    // let isAdding = false
+    // for (const i of iList) if (i === p.i) isAdding = true
+    // if (isAdding) {
+    //   if (editType === 'remove-p') {
+    //     let addP0
+    //     let addP1
+    //     if (p.order[0] === 'left') addP0 = { x: p.left.x, y: p.left.y }
+    //     if (p.order[0] === 'right') addP0 = { x: p.right.x, y: p.right.y }
+    //     if (p.order[0] === 'top') addP0 = { x: p.top.x, y: p.top.y }
+    //     if (p.order[0] === 'bottom') addP0 = { x: p.bottom.x, y: p.bottom.y }
+    //     if (p.order[1] === 'left') addP1 = { x: p.left.x, y: p.left.y }
+    //     if (p.order[1] === 'right') addP1 = { x: p.right.x, y: p.right.y }
+    //     if (p.order[1] === 'top') addP1 = { x: p.top.x, y: p.top.y }
+    //     if (p.order[1] === 'bottom') addP1 = { x: p.bottom.x, y: p.bottom.y }
+    //     if (addP0) addPList.push(addP0)
+    //     if (addP1) addPList.push(addP1)
+    //   }
+    // }
+    //
+    // if (addPList.length > 0) {
+    //   for (const ap of addPList) list.push(ap)
+    // } else {
+    //   list.push(rp)
+    // }
+    let isEditing = false
+    for (const i of iList) if (i === p.i) isEditing = true
+    if (isEditing) {
       if (editType === 'remove-p') {
-        let addP0
-        let addP1
-        if (p.order[0] === 'left') addP0 = { x: p.left.x, y: p.left.y }
-        if (p.order[0] === 'right') addP0 = { x: p.right.x, y: p.right.y }
-        if (p.order[0] === 'top') addP0 = { x: p.top.x, y: p.top.y }
-        if (p.order[0] === 'bottom') addP0 = { x: p.bottom.x, y: p.bottom.y }
-        if (p.order[1] === 'left') addP1 = { x: p.left.x, y: p.left.y }
-        if (p.order[1] === 'right') addP1 = { x: p.right.x, y: p.right.y }
-        if (p.order[1] === 'top') addP1 = { x: p.top.x, y: p.top.y }
-        if (p.order[1] === 'bottom') addP1 = { x: p.bottom.x, y: p.bottom.y }
-        if (addP0) addPList.push(addP0)
-        if (addP1) addPList.push(addP1)
+        // not push
       }
-    }
-
-    if (addPList.length > 0) {
-      for (const ap of addPList) list.push(ap)
     } else {
       list.push(rp)
     }

@@ -61,12 +61,10 @@ const CmpRawDrawer = {
       drawer.row = row
       drawer.szw = szw
       drawer.szh = szh
-      // drawer.container.border.style.width = `${drawer.column * drawer.szw + 22}px`
-      // drawer.container.border.style.height = `${drawer.row * drawer.szh + 22}px`
+      drawer.container.border.style.width = `${drawer.column * drawer.szw + 22}px`
+      drawer.container.border.style.height = `${drawer.row * drawer.szh + 22}px`
       drawer.container.content.innerHTML = ''
       makeRawBoard()
-      // drawer.container.border.style.width = `${drawer.container.content.offsetWidth}px`
-      // drawer.container.border.style.height = `${drawer.container.content.offsetHeight}px`
     }
 
     function getRawInfo(isOnFit=true) {
@@ -96,7 +94,7 @@ const CmpRawDrawer = {
       let rColumn = dColumn
       let rRow = dRow
       if (isOnFit) {
-        // console.log(`minC: ${minC}, maxC: ${maxC}, minR: ${minR}, maxR: ${maxR}`)
+        console.log(`minC: ${minC}, maxC: ${maxC}, minR: ${minR}, maxR: ${maxR}`)
         rColumn = maxC - minC + 1
         rRow = maxR - minR + 1
         for (let i=minR; i<=maxR; i++) {
@@ -190,14 +188,32 @@ const CmpRawDrawer = {
       drawer.offColor = color
     }
 
+    function update(column, row, raw) {
+      for (let i=0; i<raw.length; i++) {
+        const rw = raw[i]
+        const c = i % column
+        const r = Math.floor(i / column)
+        if (c >= drawer.column || r >= drawer.row) continue
+        const index = r * drawer.column + c
+        const id = `id-c-${index}`
+        const div = document.getElementById(id)
+        if (rw === 0) {
+          div.style.backgroundColor = drawer.offColor
+        } else {
+          div.style.backgroundColor = drawer.onColor
+        }
+      }
+    }
+
     return {
       init: init,
       getRawInfo: getRawInfo,
       onKeyDown: onKeyDown,
       changeBorder: changeBorder,
-      // changeDrawerSize: changeDrawerSize,
+      changeDrawerSize: changeDrawerSize,
       changeOnColor: changeOnColor,
       changeOffColor: changeOffColor,
+      update: update,
       column: drawer.column,
       row: drawer.row,
       szw: drawer.szw,

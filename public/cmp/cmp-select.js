@@ -1,4 +1,4 @@
-function makeSelect(id, container, labelTxt, firstTxt, onChange) {
+function makeSelect(id, container, labelTxt, firstTxt, onChange, list=[]) {
   const div = createSubDiv()
   div.innerText = labelTxt
   const select = document.createElement('select')
@@ -9,6 +9,7 @@ function makeSelect(id, container, labelTxt, firstTxt, onChange) {
   select.onchange = onChange
   div.appendChild(select)
   container.appendChild(div)
+  if (list.length > 0) initSelect(id, list)
 }
 
 function initSelect(id, list) {

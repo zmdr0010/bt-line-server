@@ -12,6 +12,7 @@ function mergeSpLineInfo(uCode, list) {
   for (const info of list) {
     const sx = info.x
     const sy = info.y
+    console.log(`sx: ${sx}, sy: ${sy}`)
     for (const dw of info.list) {
       const width = dw.width
       const color = dw.color

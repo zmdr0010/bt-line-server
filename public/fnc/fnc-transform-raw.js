@@ -112,6 +112,7 @@ function addColumn(info, first, add=1) {
     cRaw.push(oRaw[oi])
   }
   return {
+    uCode: `raw-${getCurrentDateUCode()}`,
     column: cc,
     row: r,
     rawNum: cc * r,
@@ -140,6 +141,7 @@ function addRow(info, first, add=1) {
   }
 
   return {
+    uCode: `raw-${getCurrentDateUCode()}`,
     column: c,
     row: cr,
     rawNum: c * cr,
@@ -172,6 +174,7 @@ function removeColumn(info, first, add=-1) {
     cRaw.push(oRaw[oi])
   }
   return {
+    uCode: `raw-${getCurrentDateUCode()}`,
     column: cc,
     row: r,
     rawNum: cc * r,
@@ -198,6 +201,7 @@ function removeRow(info, first, add=-1) {
     }
   }
   return {
+    uCode: `raw-${getCurrentDateUCode()}`,
     column: c,
     row: cr,
     rawNum: c * cr,
@@ -286,6 +290,7 @@ function shiftByRotateI(info, rotateI) {
     rRaw[rIndex] = rw
   }
   return {
+    uCode: `raw-${getCurrentDateUCode()}`,
     column: rColumn,
     row: rRow,
     rawNum: rColumn * rRow,
@@ -318,6 +323,7 @@ function shiftRaw(info, dc, dr, dst) {
     sRaw.push(raw[index])
   }
   return {
+    uCode: `raw-${getCurrentDateUCode()}`,
     column: column,
     row: row,
     rawNum: info.rawNum,
@@ -361,6 +367,7 @@ function changeShapeRaw(iList, iRow, iColumn, iSr, iSc, info) {
     sRaw[oIndex] = raw[cIndex]
   }
   return {
+    uCode: `raw-${getCurrentDateUCode()}`,
     column: column,
     row: row,
     rawNum: info.rawNum,

@@ -132,3 +132,16 @@ function makeInputBoxOnOff(container, checkId, labelTxt, list, onCheck) {
     setDisabled(info.id, true)
   }
 }
+
+function makeInputCheckBox(container, id, labelTxt, checked, onCheck) {
+  const div = createSubDiv()
+  div.innerText = labelTxt
+  const checkBox = document.createElement('input')
+  checkBox.id = id
+  checkBox.type = 'checkbox'
+  checkBox.style.margin = '4px'
+  checkBox.checked = checked
+  checkBox.onchange = onCheck
+  div.appendChild(checkBox)
+  container.appendChild(div)
+}

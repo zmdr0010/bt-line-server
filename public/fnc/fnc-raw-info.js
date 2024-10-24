@@ -56,3 +56,31 @@ function fitRawInfo(info) {
     raw: raw
   }
 }
+
+// uCode/num/rawSet uCode,x,y,szw,szh/rawSet uCode,x,y,szw,szh/ ... list
+function createPlaceRawInfo(set) {
+  const split = set.split('/')
+  const uCode = split[0]
+  const num = Number(split[1])
+  const list = []
+  for (let i=2; i<split.length; i++) {
+    const str = split[i]
+    const strSplit = str.split(',')
+    const rawUCode = strSplit[0]
+    const x = Number(strSplit[1])
+    const y = Number(strSplit[2])
+    const szw = Number(strSplit[3])
+    const szh = Number(strSplit[4])
+    list.push({
+      uCode: rawUCode,
+      x: x,
+      y: y,
+      szw: szw,
+      szh: szh
+    })
+  }
+  return {
+    uCode: uCode,
+    list: list
+  }
+}

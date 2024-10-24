@@ -86,4 +86,8 @@ router.get('/raw-list', (req, res) => {
   res.render('raw-list')
 })
 
+router.get('/raw-simple-edit', (req, res) => {
+  res.render('raw-simple-edit.html')
+})
+
 exports.router = router
