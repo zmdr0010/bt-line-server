@@ -97,4 +97,16 @@ router.get('/raw-set-list', (req, res) => {
   })
 })
 
+router.get('/edit-p-set-list', (req, res) => {
+  strSetManager.getEditPSetList((result) => {
+    res.json(result)
+  })
+})
+
+router.get('/place-edit-p-set-list', (req, res) => {
+  strSetManager.getPlaceEditPSetList((result) => {
+    res.json(result)
+  })
+})
+
 exports.router = router

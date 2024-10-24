@@ -90,4 +90,12 @@ router.get('/raw-simple-edit', (req, res) => {
   res.render('raw-simple-edit.html')
 })
 
+router.get('/place-raw-edit-p', (req, res) => {
+  res.render('place-raw-edit-p.html')
+})
+
+router.get('/place-raw-edit-p-list', (req, res) => {
+  res.render('place-raw-edit-p-list.html')
+})
+
 exports.router = router

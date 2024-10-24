@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>place raw edit p</title>
+  <style>
+    .menu {
+      height: 100%;
+      width: 30%;
+      position: fixed;
+      z-index: 1;
+      overflow-x: hidden;
+    }
+    .main {
+      height: 100%;
+      width: calc(100% - 30% - 8px - 16px - 400px);
+      position: fixed;
+      z-index: 1;
+      overflow-x: hidden;
+      left: calc(30%);
+    }
+    .preview {
+      width: 400px;
+      height: 100%;
+      /*background-color: lightgray;*/
+      position: fixed;
+      right: 0;
+      /*top: 0;*/
+      z-index: 1;
+    }
+  </style>
+</head>
+<body onload="init()">
+  <div class="menu" id="id-menu">
+  </div>
+  <div class="main" id="id-main">
+    <div style="margin: 10px">
+      <canvas style="border: solid 1px" id="id-canvas"></canvas>
+    </div>
+  </div>
+  <div class="preview" id="id-preview"></div>
+
+  <script type="text/javascript" src="fnc/fnc-outline.js"></script>
+  <script type="text/javascript" src="fnc/fnc-outline-edge.js"></script>
+  <script type="text/javascript" src="fnc/fnc-outline-point.js"></script>
+  <script type="text/javascript" src="fnc/fnc-outline-edit-p-set.js"></script>
+  <script type="text/javascript" src="fnc/fnc-save.js"></script>
+  <script type="text/javascript" src="fnc/fnc-line-info.js"></script>
+  <script type="text/javascript" src="fnc/fnc-merge-line-info.js"></script>
+  <script type="text/javascript" src="fnc/fnc-draw.js"></script>
+  <script type="text/javascript" src="fnc/fnc-divide-line.js"></script>
+  <script type="text/javascript" src="fnc/fnc-transform-line-info.js"></script>
+  <script type="text/javascript" src="fnc/fnc-raw-info.js"></script>
+  <script type="text/javascript" src="cmp/cmp-btn.js"></script>
+  <script type="text/javascript" src="cmp/cmp-common.js"></script>
+  <script type="text/javascript" src="cmp/cmp-input.js"></script>
+  <script type="text/javascript" src="cmp/cmp-raw-drawer.js"></script>
+  <script type="text/javascript" src="cmp/cmp-select.js"></script>
+  <script>
+    let editPSetList = []
+    let editPSetInfoList = []
+    let placeEditPSetList = []
+    let rawSetList = []
+
+    let canvas
+    let ctx
+    let szw = 20
+    let szh = 20
+    let sx = 0
+    let sy = 0
+    let crntI = -1
+    let color = 'white'
+    let lineColor = 'black'
+    let lineWidth = 1
+    let editType = 'none'
+    let editTypeList = [ 'none', 'add-p', 'remove-p', 'slice', 'curve' ]
+    // let iList = []
+    // let edgeList = []
+
+    let placeList = [
+      // {
+      //   x: 0,
+      //   y: 0,
+      //   pSetInfo: {
+      //     uCode: '',
+      //     rawUCode: '',
+      //     szw: 20,
+      //     szh: 20,
+      //     color: 'white',
+      //     lineColor: 'black',
+      //     lineWidth: 1,
+      //     editType: 'none',
+      //     iList: [],
+      //     edgeTypeList: []
+      //
+      //   }
+      // }
+    ]
+
+    let saveMode = 'new' // update (override) / new
+
+    function init() {
+      const main = document.getElementById('id-main')
+      canvas = document.getElementById('id-canvas')
+      canvas.width = main.offsetWidth - 22
+      canvas.height = main.offsetHeight - 22 - 8
+      ctx = canvas.getContext('2d')
+
+      loadRawSetList()
+    }
+
+    function loadRawSetList() {
+      const request = new Request('/str-set/raw-set-list')
+      fetch(request).then((response) => response.json()).then((json) => {
+        console.log(json)
+        if (json.code === 'list') {
+          for (const str of json.list) {
+            rawSetList.push(str)
+          }
+          loadEditSetList()
+        }
+      })
+    }
+
+    function loadEditSetList() {
+      const request = new Request('/str-set/edit-p-set-list')
+      fetch(request).then((response) => response.json()).then((json) => {
+        console.log(json)
+        if (json.code === 'list') {
+          for (const str of json.list) {
+            editPSetList.push(str)
+          }
+          for (const pSet of editPSetList) editPSetInfoList.push(createEditPSetInfo(pSet))
+          loadPlaceEditSetList()
+        }
+      })
+    }
+
+    function loadPlaceEditSetList() {
+      const request = new Request('/str-set/place-edit-p-set-list')
+      fetch(request).then((response) => response.json()).then((json) => {
+        console.log(json)
+        if (json.code === 'list') {
+          for (const str of json.list) {
+            placeEditPSetList.push(str)
+          }
+          makeMenu()
+        }
+      })
+    }
+
+    function makeMenu() {
+      const menu = document.getElementById('id-menu')
+      makeInputRawUCode(menu)
+      makeLinePlaceEdit(menu)
+      makePSetEdit(menu)
+    }
+
+    function makeInputRawUCode(menu) {
+      const container = createContainer()
+      menu.appendChild(container.border)
+      makeInputTextBtn('id-input-place-ucode', container.content, 'place uCode: ', 'load',
+        () => {
+          const uCode = getInputValue('id-input-place-ucode')
+          const placeSet = placeEditPSetList.find(p => p.split('/')[0] === uCode)
+          let isNew = false
+          if (saveMode === 'new') isNew = true
+          const placeInfo = createEditPPlaceInfo(placeSet, editPSetInfoList, isNew)
+          placeList = placeInfo.list
+          for (const p of placeList) makeLine(p, rawSetList)
+          crntI = 0
+          updateCrnt()
+        })
+      makeInputTextBtn('id-input-raw-ucode', container.content, 'raw uCode: ', 'add',
+        () => {
+          addRaw()
+        })
+      // list: [ { id: '', labelTxt: '', onClick: null } ]
+      makeBtnGroup(container.content, [
+        { id: 'id-btn-print', labelTxt: 'print', onClick: () => { print() } },
+        { id: 'id-btn-save', labelTxt: 'save', onClick: () => { save() } },
+        { id: 'id-btn-save-to-line', labelTxt: 'save to line', onClick: () => { saveToLine() } }
+      ])
+      makeSimpleTxtDiv('id-txt-div-post-result', container.content, '')
+    }
+
+    function makePSetEdit(menu) {
+      const container = createContainer()
+      container.content.innerText = 'edit pSet info'
+      menu.appendChild(container.border)
+      makeInputText('id-input-change-raw-ucode', container.content, 'raw uCode: ')
+      makeInputNum('id-input-szw', container.content, 'szw: ', szw,
+        () => { szw = getInputValueNumber('id-input-szw') })
+
+      makeInputNum('id-input-szh', container.content, 'szh: ', szh,
+        () => { szh = getInputValueNumber('id-input-szh') })
+      // makeInputNum('id-input-start-x', container.content, 'start x: ', sx,
+      //   () => { sx = getInputValueNumber('id-input-start-x') })
+      // makeInputNum('id-input-start-y', container.content, 'start y: ', sy,
+      //   () => { sy = getInputValueNumber('id-input-start-y') })
+
+      makeInputText('id-input-color', container.content, 'color: ')
+      changeInputValue('id-input-color', color)
+
+      makeInputText('id-input-line-color', container.content, 'line color: ')
+      changeInputValue('id-input-line-color', lineColor)
+
+      makeInputNum('id-input-line-width', container.content, 'line width: ', lineWidth,
+        () => {
+          lineWidth = getInputValueNumber('id-input-line-width')
+        })
+
+      makeSelect('id-select-edit-type', container.content, 'edit type: ', 'choose edit type',
+        () => { editType = getInputValue('id-select-edit-type') })
+      initSelect('id-select-edit-type', editTypeList)
+
+      makeInputText('id-input-i-list', container.content, 'iList: ')
+      // iList = []
+      // const str = getInputValue('id-input-i-list')
+      // const split = str.split(',')
+      // for (const st of split) {
+      //   iList.push(Number(st))
+      // }
+      makeInputText('id-input-edge-type-list', container.content, 'edge type list: ', 'change')
+      // edgeList = []
+      // const str = getInputValue('id-input-edge-type-list')
+      // const split = str.split(',')
+      // for (const st of split) {
+      //   if (st === 'left-top' || st === 'left-bottom'
+      //     || st === 'right-top' || st === 'right-bottom'
+      //     || st === 'left-top-inside' || st === 'left-bottom-inside'
+      //     || st === 'right-top-inside' || st === 'right-bottom-inside') edgeList.push(st)
+      // }
+      makeBtnGroup(container.content, [{ id: 'id-btn-change-p-set', labelTxt: 'change pSet',
+        onClick: () => {
+          changePSet()
+        } }])
+    }
+
+    function makeLinePlaceEdit(menu) {
+      const container = createContainer()
+      container.content.innerText = 'current place info'
+      menu.appendChild(container.border)
+      makeSimpleTxtDiv('id-txt-div-line-place', container.content, `[${crntI}]`)
+      makeBtnGroup(container.content, [
+        { id: 'id-btn-next', labelTxt: 'next',
+          onClick: () => {
+            crntI++
+            if (crntI >= placeList.length) crntI = 0
+            updateCrnt()
+          } },
+        { id: 'id-btn-prev', labelTxt: 'prev',
+          onClick: () => {
+            crntI--
+            if (crntI < 0) crntI = placeList.length - 1
+            updateCrnt()
+          } },
+        { id: 'id-btn-front', labelTxt: 'front',
+          onClick: () => {
+            if (placeList.length < 0) return
+            let next = crntI + 1
+            if (next >= placeList.length) next = placeList.length - 1
+            if (crntI === next) return
+            const nLine = placeList[next]
+            const crnt = placeList[crntI]
+            placeList[crntI] = nLine
+            placeList[next] = crnt
+            crntI = next
+            updateCrnt()
+          } },
+        { id: 'id-btn-back', labelTxt: 'back',
+          onClick: () => {
+            if (placeList.length < 0) return
+            let prev = crntI - 1
+            if (prev < 0) prev = 0
+            if (crntI === prev) return
+            const pLine = placeList[prev]
+            const crnt = placeList[crntI]
+            placeList[prev] = crnt
+            placeList[crntI] = pLine
+            crntI = prev
+            updateCrnt()
+          } },
+        { id: 'id-btn-remove', labelTxt: 'remove',
+          onClick: () => {
+            if (placeList.length < 0) return
+            placeList.splice(crntI, 1)
+            if (placeList.length <= 0) {
+              crntI = -1
+              draw()
+            } else {
+              crntI = 0
+              updateCrnt()
+            }
+          } },
+      ])
+      makeInputNum('id-input-line-x', container.content, 'x: ', 0,
+        () => {
+          const crntPlace = placeList[crntI]
+          crntPlace.x = getInputValueNumber('id-input-line-x')
+          crntPlace.lineInfo.x = crntPlace.x
+          draw()
+        })
+      makeInputNum('id-input-line-y', container.content, 'y: ', 0,
+        () => {
+          const crntPlace = placeList[crntI]
+          crntPlace.y = getInputValueNumber('id-input-line-y')
+          crntPlace.lineInfo.y = crntPlace.y
+          draw()
+      })
+    }
+
+    // place edit p set
+    // uCode/num/pSet uCode,x,y/pSet uCode,x,y/ ... list
+    //
+    // edit p set
+    // uCode/raw uCode/szw/szh/color/lineColor/lineWidth/edit type/i num/i,i,i, ... list/edge type num/edge type,type ... list
+    function print() {
+      const uCode = `place-edit-p-set-${getCurrentDateUCode()}`
+      const info = {
+        uCode: uCode,
+        list: placeList
+      }
+      const str = createEditPPlaceStrSet(info)
+      console.log(str)
+      for (const p of placeList) {
+        const pSetStr = createEditPStrSet(p.pSetInfo)
+        console.log(pSetStr)
+      }
+    }
+
+    function save() {
+      const uCode = `place-edit-p-set-${getCurrentDateUCode()}`
+      const info = {
+        uCode: uCode,
+        list: placeList
+      }
+      fitPlaceInfo(info)
+      placeList = info.list
+      const str = createEditPPlaceStrSet(info)
+      console.log(str)
+      const label = document.getElementById('id-txt-div-post-result')
+      label.innerText = ''
+      saveString(uCode, str)
+      postStrSet({
+        uCode: uCode,
+        str: str,
+        type: 'place-edit-p-set',
+        dsg: '',
+        memo0: '',
+        memo1: '',
+        memo2: '',
+      }, label)
+      for (const p of placeList) {
+        const pSetStr = createEditPStrSet(p.pSetInfo)
+        console.log(pSetStr)
+        saveString(p.pSetInfo.uCode, pSetStr)
+        postStrSet({
+          uCode: p.pSetInfo.uCode,
+          str: pSetStr,
+          type: 'edit-p-set',
+          dsg: '',
+          memo0: '',
+          memo1: '',
+          memo2: '',
+        }, label)
+      }
+    }
+
+    function saveToLine() {
+      const uCode = `place-edit-p-set-${getCurrentDateUCode()}`
+      const info = {
+        uCode: uCode,
+        list: placeList
+      }
+      fitPlaceInfo(info)
+      placeList = info.list
+      const lineList = []
+      console.log(placeList)
+      for (const p of placeList) {
+        makeLine(p, rawSetList)
+        if (p.lineInfo) {
+          // p.lineInfo.x = p.x
+          // p.lineInfo.y = p.y
+          lineList.push(p.lineInfo)
+        }
+      }
+      const mgLine = mergeSpLineInfo(`line-${getCurrentDateUCode()}`, lineList)
+      const mgLineSet = createSimpleLineStrSet(mgLine)
+      saveString(mgLine.uCode, mgLineSet)
+      // drawLineInfo(ctx, mgLine, 300, 0)
+
+      const label = document.getElementById('id-txt-div-post-result')
+      label.innerText = ''
+      postStrSet({
+        uCode: mgLine.uCode,
+        str: mgLineSet,
+        type: 'line',
+        dsg: '',
+        memo0: 'place-raw-edit-p',
+        memo1: '',
+        memo2: '',
+      }, label)
+    }
+
+    function postStrSet(obj, label) {
+      const request = new Request('/str-set/add-str', {
+        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', body: JSON.stringify(obj)
+      })
+      fetch(request).then(response => {
+        return response.json()
+      }).then(result => {
+        console.log(result)
+        const str = `${obj.type}: ${result.code}`
+        label.innerText = `${label.innerText}, ${str}`
+      })
+    }
+
+    function addRaw() {
+      const rawUCode = getInputValue('id-input-raw-ucode')
+
+      const placeInfo = {
+        x: sx,
+        y: sy,
+        pSetInfo: {
+          uCode: `edit-p-set-${getCurrentDateUCode()}`,
+          rawUCode: rawUCode,
+          szw: szw,
+          szh: szh,
+          color: color,
+          lineColor: lineColor,
+          lineWidth: lineWidth,
+          editType: 'none',
+          iList: [],
+          edgeTypeList: []
+        },
+        lineInfo: null
+      }
+      placeList.push(placeInfo)
+      crntI = placeList.length - 1
+      makeLine(placeInfo, rawSetList)
+      updateCrnt()
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+      for (const placeInfo of placeList) {
+        drawLineInfo(ctx, placeInfo.lineInfo, sx, sx)
+      }
+
+    }
+
+    function updateCrnt() {
+      const crntPlace = placeList[crntI]
+      changeInputValue('id-input-line-x', crntPlace.x)
+      changeInputValue('id-input-line-y', crntPlace.y)
+      changeSimpleTxtDiv('id-txt-div-line-place', `[${crntI}]`)
+      const pSet = crntPlace.pSetInfo
+      changeInputValue('id-input-change-raw-ucode', pSet.rawUCode)
+      changeInputValue('id-input-szw', pSet.szw)
+      changeInputValue('id-input-szh', pSet.szh)
+      changeInputValue('id-input-color', pSet.color)
+      changeInputValue('id-input-line-color', pSet.lineColor)
+      changeInputValue('id-input-line-width', pSet.lineWidth)
+      changeInputValue('id-select-edit-type', pSet.editType)
+      if (pSet.iList.length > 0) changeInputValue('id-input-i-list', pSet.iList.join(','))
+      if (pSet.edgeTypeList.length > 0) changeInputValue('id-input-edge-type-list', pSet.edgeTypeList.join(','))
+      draw()
+    }
+
+    function changePSet() {
+      const crntPlace = placeList[crntI]
+      const pSet = crntPlace.pSetInfo
+      pSet.rawUCode = getInputValue('id-input-change-raw-ucode')
+      pSet.szw = getInputValueNumber('id-input-szw')
+      pSet.szh = getInputValueNumber('id-input-szh')
+      pSet.color = getInputValue('id-input-color')
+      pSet.lineColor = getInputValue('id-input-line-color')
+      pSet.lineWidth = getInputValueNumber('id-input-line-width')
+      pSet.editType = getInputValue('id-select-edit-type')
+
+      pSet.iList = []
+      const iListStr = getInputValue('id-input-i-list')
+      const iSplit = iListStr.split(',')
+      for (const st of iSplit) pSet.iList.push(Number(st))
+
+      pSet.edgeTypeList = []
+      const typeStr = getInputValue('id-input-edge-type-list')
+      const tSplit = typeStr.split(',')
+      for (const st of tSplit) {
+        if (st === 'left-top' || st === 'left-bottom'
+          || st === 'right-top' || st === 'right-bottom'
+          || st === 'left-top-inside' || st === 'left-bottom-inside'
+          || st === 'right-top-inside' || st === 'right-bottom-inside') pSet.edgeTypeList.push(st)
+      }
+
+      makeLine(crntPlace, rawSetList)
+      draw()
+    }
+  </script>
+</body>
+</html>
