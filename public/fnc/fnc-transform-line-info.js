@@ -1,6 +1,6 @@
 // info: line info
 function createScaledLineInfo(info, scw, sch) {
-  const uCode = `line-scale-${getCurrentDateUCode()}`
+  const uCode = `line-${getCurrentDateUCode()}`
   const w = info.w * scw
   const h = info.h * sch
   const x = info.x * scw
@@ -38,7 +38,7 @@ function createScaledLineInfo(info, scw, sch) {
 //   2     7
 //     1 0
 function createShiftRotateILineInfo(info, rotateI) {
-  const uCode = `line-sft-r-i-${getCurrentDateUCode()}`
+  const uCode = `line-${getCurrentDateUCode()}`
   const w = info.w
   const h = info.h
   let rW = w
@@ -114,7 +114,7 @@ function calcPosByRotateI(x, y, w, h, rotateI) {
 
 // info: lineInfo
 function createRotateLineInfo(info, radian) {
-  const uCode = `line-rotate-${getCurrentDateUCode()}`
+  const uCode = `line-${getCurrentDateUCode()}`
   const list = []
   const rtt = rotate(radian, info.x, info.y, 0, 0, 0, 0)
 

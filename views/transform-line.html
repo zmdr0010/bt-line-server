@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>transform line</title>
+  <style>
+    .menu {
+      height: 100%;
+      width: 30%;
+      position: fixed;
+      z-index: 1;
+      overflow-x: hidden;
+    }
+    .main {
+      height: 100%;
+      width: calc(100% - 30% - 8px - 16px - 400px);
+      position: fixed;
+      z-index: 1;
+      overflow-x: hidden;
+      left: calc(30%);
+    }
+    .preview {
+      width: 400px;
+      height: 100%;
+      /*background-color: lightgray;*/
+      position: fixed;
+      right: 0;
+      /*top: 0;*/
+      z-index: 1;
+    }
+  </style>
+</head>
+<body onload="init()">
+  <div class="menu" id="id-menu"></div>
+  <div class="main" id="id-main">
+    <div style="margin: 10px" id="id-canvas-container">
+      <canvas style="border: solid 1px" id="id-canvas"></canvas>
+    </div>
+  </div>
+  <div class="preview" id="id-preview"></div>
+
+  <script type="text/javascript" src="fnc/fnc-draw.js"></script>
+  <script type="text/javascript" src="fnc/fnc-line-info.js"></script>
+  <script type="text/javascript" src="fnc/fnc-transform-line-info.js"></script>
+  <script type="text/javascript" src="fnc/fnc-save.js"></script>
+  <script type="text/javascript" src="cmp/cmp-common.js"></script>
+  <script type="text/javascript" src="cmp/cmp-input.js"></script>
+  <script type="text/javascript" src="cmp/cmp-select.js"></script>
+  <script type="text/javascript" src="cmp/cmp-btn.js"></script>
+  <script>
+    let lineSetList = []
+
+    let canvas
+    let ctx
+
+    let sx = 50
+    let sy = 50
+
+    let editInfo = {
+      lineInfo: null,
+      transLine: null,
+      scaleInfo: {
+        isNew: false,
+        scaleX: 1,
+        scaleY: 1
+      },
+      rotateInfo: {
+        isNew: false,
+        degree: 0
+      },
+      sftRIInfo: {
+        isNew: false,
+        i: 0,
+        list: [0,1,2,3,4,5,6,7]
+      },
+      p4Info: {
+        isNew: false,
+        lt: {
+          scx: 0,
+          scy: 0
+        },
+        rt: {
+          scx: 1,
+          scy: 0
+        },
+        lb: {
+          scx: 0,
+          scy: 1
+        },
+        rb: {
+          scx: 1,
+          scy: 1
+        }
+      }
+    }
+
+    function init() {
+      const main = document.getElementById('id-main')
+      canvas = document.getElementById('id-canvas')
+      canvas.width = main.offsetWidth - 16 * 2
+      canvas.height = main.offsetHeight - 16 * 3
+      ctx = canvas.getContext('2d')
+
+      const request = new Request('/str-set/line-set-list')
+      fetch(request).then((response) => response.json()).then((json) => {
+        console.log(json)
+        if (json.code === 'list') {
+          for (const str of json.list) {
+            lineSetList.push(str)
+          }
+          makeMenu()
+        }
+      })
+    }
+
+    function makeMenu() {
+      const menu = document.getElementById('id-menu')
+      makeInputUCode(menu)
+      makeEditStartPos(menu)
+      makeEditScale(menu)
+      makeEditRotate(menu)
+      makeEditShiftRotateI(menu)
+      makeEditP4(menu)
+    }
+
+    function makeInputUCode(menu) {
+      const container = createContainer()
+      menu.appendChild(container.border)
+      makeInputTextBtn('id-input-line-ucode', container.content, 'line uCode: ', 'load',
+        () => { loadLine() })
+      makeBtnGroup(container.content, [
+        { id: 'id-btn-reset', labelTxt: 'reset',
+          onClick: () => {
+            editInfo.transLine = null
+            draw()
+          } },
+        { id: 'id-btn-print', labelTxt: 'print', onClick: print },
+        { id: 'id-btn-save', labelTxt: 'save', onClick: save }
+      ])
+      makeSimpleTxtDiv('id-txt-div-result', container.content, '')
+    }
+
+    function makeEditStartPos(menu) {
+      const container = createContainer()
+      menu.appendChild(container.border)
+      makeInputNum('id-input-sx', container.content, 'sx: ', sx,
+        () => {
+          sx = getInputValueNumber('id-input-sx')
+          draw()
+        })
+      makeInputNum('id-input-sy', container.content, 'sy: ', sy,
+        () => {
+          sy = getInputValueNumber('id-input-sy')
+          draw()
+        })
+    }
+
+    function makeEditScale(menu) {
+      const container = createContainer()
+      menu.appendChild(container.border)
+      makeInputCheckBox(container.content, 'id-checkbox-scale-is-new', 'isNew: ', false,
+        () => { editInfo.scaleInfo.isNew = getChecked('id-checkbox-scale-is-new') })
+      makeInputNum('id-input-scale-x', container.content, 'scaleX: ', 1,
+        () => {
+          editInfo.scaleInfo.scaleX = getInputValueNumber('id-input-scale-x')
+        }, 0.01)
+      makeInputNum('id-input-scale-y', container.content, 'scaleY: ', 1,
+        () => {
+          editInfo.scaleInfo.scaleY = getInputValueNumber('id-input-scale-y')
+        }, 0.01)
+      makeBtnGroup(container.content, [ { id: 'id-btn-change-scale', labelTxt: 'change scale',
+        onClick: () => {
+          if (editInfo.scaleInfo.scaleX === 1 && editInfo.scaleInfo.scaleY === 1) return
+          let lineInfo = editInfo.lineInfo
+          if (!editInfo.scaleInfo.isNew && editInfo.transLine) lineInfo = editInfo.transLine
+          editInfo.transLine = createScaledLineInfo(lineInfo, editInfo.scaleInfo.scaleX, editInfo.scaleInfo.scaleY)
+          draw()
+        } } ])
+    }
+
+    function makeEditRotate(menu) {
+      const container = createContainer()
+      menu.appendChild(container.border)
+      makeInputCheckBox(container.content, 'id-checkbox-rotate-is-new', 'isNew: ', false,
+        () => { editInfo.rotateInfo.isNew = getChecked('id-checkbox-rotate-is-new') })
+      makeInputNum('id-input-degree', container.content, 'degree: ', 0,
+        () => {
+          editInfo.rotateInfo.degree = getInputValueNumber('id-input-degree')
+        })
+      makeBtnGroup(container.content, [ { id: 'id-btn-change-rotate', labelTxt: 'change rotate',
+        onClick: () => {
+          if (editInfo.rotateInfo.degree === 0) return
+          let lineInfo = editInfo.lineInfo
+          if (!editInfo.rotateInfo.isNew && editInfo.transLine) lineInfo = editInfo.transLine
+          editInfo.transLine = createRotateLineInfo(lineInfo, degreeToRadian(editInfo.rotateInfo.degree))
+          fitSimpleLineInfo(editInfo.transLine)
+          draw()
+        } } ])
+    }
+
+    function makeEditShiftRotateI(menu) {
+      const container = createContainer()
+      menu.appendChild(container.border)
+      makeInputCheckBox(container.content, 'id-checkbox-sft-ri-is-new', 'isNew: ', false,
+        () => { editInfo.sftRIInfo.isNew = getChecked('id-checkbox-sft-ri-is-new') })
+      makeSelect('id-select-sft-ri', container.content, 'sftRI: ', 'choose sftRI',
+        () => { editInfo.sftRIInfo.i = getInputValueNumber('id-select-sft-ri') }, editInfo.sftRIInfo.list)
+      makeBtnGroup(container.content, [ { id: 'id-btn-change-sft-ri', labelTxt: 'change sftRI',
+        onClick: () => {
+          if (editInfo.sftRIInfo.i === 0) return
+          let lineInfo = editInfo.lineInfo
+          if (!editInfo.sftRIInfo.isNew && editInfo.transLine) lineInfo = editInfo.transLine
+          editInfo.transLine = createShiftRotateILineInfo(lineInfo, editInfo.sftRIInfo.i)
+          draw()
+        } } ])
+    }
+
+    function makeEditP4(menu) {
+      const container = createContainer()
+      menu.appendChild(container.border)
+      makeInputCheckBox(container.content, 'id-checkbox-p4-is-new', 'isNew: ', false,
+        () => { editInfo.p4Info.isNew = getChecked('id-checkbox-p4-is-new') })
+      makeInputNum('id-input-p4-lt-scx', container.content, 'lt.scx: ', editInfo.p4Info.lt.scx,
+        () => {
+          editInfo.p4Info.lt.scx = getInputValueNumber('id-input-p4-lt-scx')
+          // if (!editInfo.p4Info.isNew) editingP4()
+        }, 0.01)
+      makeInputNum('id-input-p4-lt-scy', container.content, 'lt.scy: ', editInfo.p4Info.lt.scy,
+        () => {
+          editInfo.p4Info.lt.scy = getInputValueNumber('id-input-p4-lt-scy')
+          // if (!editInfo.p4Info.isNew) editingP4()
+        }, 0.01)
+      makeInputNum('id-input-p4-rt-scx', container.content, 'rt.scx: ', editInfo.p4Info.rt.scx,
+        () => {
+          editInfo.p4Info.rt.scx = getInputValueNumber('id-input-p4-rt-scx')
+          // if (!editInfo.p4Info.isNew) editingP4()
+        }, 0.01)
+      makeInputNum('id-input-p4-rt-scy', container.content, 'rt.scy: ', editInfo.p4Info.rt.scy,
+        () => {
+          editInfo.p4Info.rt.scy = getInputValueNumber('id-input-p4-rt-scy')
+          // if (!editInfo.p4Info.isNew) editingP4()
+        }, 0.01)
+      makeInputNum('id-input-p4-lb-scx', container.content, 'lb.scx: ', editInfo.p4Info.lb.scx,
+        () => {
+          editInfo.p4Info.lb.scx = getInputValueNumber('id-input-p4-lb-scx')
+          // if (!editInfo.p4Info.isNew) editingP4()
+        }, 0.01)
+      makeInputNum('id-input-p4-lb-scy', container.content, 'lb.scy: ', editInfo.p4Info.lb.scy,
+        () => {
+          editInfo.p4Info.lb.scy = getInputValueNumber('id-input-p4-lb-scy')
+          // if (!editInfo.p4Info.isNew) editingP4()
+        }, 0.01)
+      makeInputNum('id-input-p4-rb-scx', container.content, 'rb.scx: ', editInfo.p4Info.rb.scx,
+        () => {
+          editInfo.p4Info.rb.scx = getInputValueNumber('id-input-p4-rb-scx')
+          // if (!editInfo.p4Info.isNew) editingP4()
+        }, 0.01)
+      makeInputNum('id-input-p4-rb-scy', container.content, 'rb.scy: ', editInfo.p4Info.rb.scy,
+        () => {
+          editInfo.p4Info.rb.scy = getInputValueNumber('id-input-p4-rb-scy')
+          // if (!editInfo.p4Info.isNew) editingP4()
+        }, 0.01)
+      makeBtnGroup(container.content, [ { id: 'id-btn-change-p4', labelTxt: 'change p4',
+        onClick: () => {
+          editingP4()
+        } } ])
+    }
+
+    function editingP4() {
+      let lineInfo = editInfo.lineInfo
+      if (!editInfo.p4Info.isNew && editInfo.transLine) lineInfo = editInfo.transLine
+      lineInfo = createLinePointFromLineInfo(lineInfo)
+      const pList = transformPoints4(lineInfo.pointInfo.list, lineInfo.w, lineInfo.h, editInfo.p4Info)
+      for (let i=0; i<pList.length; i++) {
+        const p = pList[i]
+        const pp = lineInfo.pointInfo.list[i]
+        pp.x = p.x
+        pp.y = p.y
+      }
+      fitSimpleLineInfo(lineInfo)
+      editInfo.transLine = lineInfo
+      draw()
+    }
+
+    function loadLine() {
+      const uCode = getInputValue('id-input-line-ucode')
+      const set = lineSetList.find(s => s.split('/')[0] === uCode)
+      editInfo.lineInfo = createSimpleLineInfo(set)
+      draw()
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+      if (editInfo.transLine) {
+        drawLineInfo(ctx, editInfo.transLine, sx, sy)
+      } else {
+        if (editInfo.lineInfo) drawLineInfo(ctx, editInfo.lineInfo, sx, sy)
+      }
+    }
+
+    function print() {
+      console.log(editInfo)
+    }
+
+    function save() {
+      if (!editInfo.transLine) return
+      const set = createSimpleLineStrSet(editInfo.transLine)
+      saveString(editInfo.transLine.uCode, set)
+
+      const obj = {
+        uCode: editInfo.transLine.uCode,
+        str: set,
+        type: 'line',
+        dsg: '',
+        memo0: `line,${editInfo.lineInfo.uCode}`,
+        memo1: '',
+        memo2: '',
+      }
+
+      const request = new Request('/str-set/add-str', {
+        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', body: JSON.stringify(obj)
+      })
+      fetch(request).then(response => {
+        return response.json()
+      }).then(result => {
+        console.log(result)
+        const str = `${obj.type}: ${result.code}`
+        changeInputValue('id-txt-div-result', str)
+      })
+    }
+  </script>
+</body>
+</html>
