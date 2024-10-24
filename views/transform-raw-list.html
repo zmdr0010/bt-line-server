@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>transform raw list</title>
+
+  <style>
+    #snackbar {
+      visibility: hidden;
+      min-width: 250px;
+      margin-left: -125px;
+      background-color: #333;
+      color: #fff;
+      text-align: center;
+      border-radius: 2px;
+      padding: 16px;
+      position: fixed;
+      z-index: 1;
+      left: 50%;
+      bottom: 30px;
+    }
+    #snackbar.show {
+      visibility: visible;
+      -webkit-animation: fadein 0.5s, fadeout 0.5s 2.5s;
+      animation: fadein 0.5s, fadeout 0.5s 2.5s
+    }
+    @-webkit-keyframes fadein {
+      from {bottom: 0; opacity: 0}
+      to {bottom: 30px; opacity: 1}
+    }
+    @keyframes fadein {
+      from {bottom: 0; opacity: 0}
+      to {bottom: 30px; opacity: 1}
+    }
+    @-webkit-keyframes fadeout {
+      from {bottom: 30px; opacity: 1}
+      to {bottom: 0; opacity: 0}
+    }
+    @keyframes fadeout {
+      from {bottom: 30px; opacity: 1}
+      to {bottom: 0; opacity: 0}
+    }
+  </style>
+</head>
+<body onload="init()">
+  <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr" id="id-container"></div>
+  <div id="snackbar">Some text some message...</div>
+
+  <script type="text/javascript" src="cmp/cmp-btn.js"></script>
+  <script type="text/javascript" src="cmp/cmp-common.js"></script>
+  <script type="text/javascript" src="cmp/cmp-input.js"></script>
+  <script type="text/javascript" src="cmp/cmp-raw-drawer.js"></script>
+  <script type="text/javascript" src="cmp/cmp-select.js"></script>
+  <script type="text/javascript" src="fnc/fnc-save.js"></script>
+  <script type="text/javascript" src="fnc/fnc-draw.js"></script>
+  <script type="text/javascript" src="fnc/fnc-raw-info.js"></script>
+  <script type="text/javascript" src="fnc/fnc-transform-raw.js"></script>
+  <script type="text/javascript" src="fnc/fnc-raw-mtx.js"></script>
+  <script>
+    let rawSetList = []
+    let placeSetList = []
+
+    let szw = 20
+    let szh = 20
+
+    function init() {
+      loadRawSetList()
+    }
+
+    function loadRawSetList() {
+      const request = new Request('/str-set/raw-set-list')
+      fetch(request).then((response) => response.json()).then((json) => {
+        console.log(json)
+        if (json.code === 'list') {
+          for (const str of json.list) {
+            rawSetList.push(str)
+          }
+          loadPlaceSetList()
+        }
+      })
+    }
+
+    function loadPlaceSetList() {
+      const request = new Request('/str-set/place-raw-set-list')
+      fetch(request).then((response) => response.json()).then((json) => {
+        console.log(json)
+        if (json.code === 'list') {
+          for (const str of json.list) {
+            placeSetList.push(str)
+          }
+          makeList()
+        }
+      })
+    }
+
+    function makeList() {
+      const container = document.getElementById('id-container')
+      document.body.style.backgroundColor = 'skyblue'
+      for (const set of placeSetList) {
+        const placeInfo = createPlaceRawInfo(set)
+        const canvas = document.createElement('canvas')
+        canvas.width = 500
+        canvas.height = 500
+        let w = 100
+        let h = 100
+        const ctx = canvas.getContext('2d')
+        console.log(placeInfo)
+        const editList = []
+        for (const info of placeInfo.list) {
+          const rawSet = rawSetList.find(s => s.split('/')[0] === info.uCode)
+          const rawInfo = createRawInfo(rawSet)
+          const editInfo = {
+            x: info.x,
+            y: info.y,
+            szw: info.szw,
+            szh: info.szh,
+            rawInfo: rawInfo,
+            transRawInfo: null,
+            expandInfo: {
+              isFit: true,
+              sn: 1
+            },
+            addColumnInfo: {
+              add: 0,
+              target: 0
+            },
+            addRowInfo: {
+              add: 0,
+              target: 0
+            },
+            rotateIInfo: {
+              i: 0
+            }
+          }
+          editList.push(editInfo)
+          if (editInfo.transRawInfo) {
+            let szw = editInfo.szw
+            let szh = editInfo.szh
+            if (editInfo.expandInfo.sn > 1) {
+              if (editInfo.expandInfo.isFit) {
+                szw = editInfo.szw / editInfo.expandInfo.sn
+                szh = editInfo.szh / editInfo.expandInfo.sn
+              }
+            }
+            // drawRawSimple(ctx, editInfo.transRawInfo, editInfo.x, editInfo.y, szw, szh)
+            w = Math.max(w, editInfo.x + editInfo.transRawInfo.column * szw)
+            h = Math.max(h, editInfo.y + editInfo.transRawInfo.row * szh)
+          } else {
+            // drawRawSimple(ctx, editInfo.rawInfo, editInfo.x, editInfo.y, editInfo.szw, editInfo.szh)
+            w = Math.max(w, editInfo.x + editInfo.rawInfo.column * szw)
+            h = Math.max(h, editInfo.y + editInfo.rawInfo.row * szh)
+          }
+        }
+        canvas.width = w + 20
+        canvas.height = h + 20
+        console.log(`w: ${w}, h: ${h}`)
+        for (const editInfo of editList) {
+          if (editInfo.transRawInfo) {
+            let szw = editInfo.szw
+            let szh = editInfo.szh
+            if (editInfo.expandInfo.sn > 1) {
+              if (editInfo.expandInfo.isFit) {
+                szw = editInfo.szw / editInfo.expandInfo.sn
+                szh = editInfo.szh / editInfo.expandInfo.sn
+              }
+            }
+            drawRawSimple(ctx, editInfo.transRawInfo, editInfo.x, editInfo.y, szw, szh)
+          } else {
+            drawRawSimple(ctx, editInfo.rawInfo, editInfo.x, editInfo.y, editInfo.szw, editInfo.szh)
+          }
+        }
+
+        const div = document.createElement('div')
+        div.appendChild(canvas)
+        const label = document.createElement('label')
+        label.innerText = placeInfo.uCode
+        div.appendChild(label)
+        container.appendChild(div)
+
+        div.addEventListener('click', () => {
+          navigator.clipboard.writeText(label.innerText)
+
+          const snackbar = document.getElementById('snackbar')
+          snackbar.innerText = `copied: ${label.innerText}`
+          snackbar.className = 'show'
+          setTimeout(() => { snackbar.className = snackbar.className.replace('show', '') }, 3000)
+        })
+      }
+    }
+  </script>
+</body>
+</html>

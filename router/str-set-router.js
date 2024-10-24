@@ -109,4 +109,10 @@ router.get('/place-edit-p-set-list', (req, res) => {
   })
 })
 
+router.get('/place-raw-set-list', (req, res) => {
+  strSetManager.getPlaceRawSetList((result) => {
+    res.json(result)
+  })
+})
+
 exports.router = router

@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>transform raw</title>
+  <style>
+    .menu {
+      height: 100%;
+      width: 30%;
+      position: fixed;
+      z-index: 1;
+      overflow-x: hidden;
+    }
+    .main {
+      height: 100%;
+      width: calc(100% - 30% - 8px - 16px - 400px);
+      position: fixed;
+      z-index: 1;
+      overflow-x: hidden;
+      left: calc(30%);
+    }
+    .preview {
+      width: 400px;
+      height: 100%;
+      /*background-color: lightgray;*/
+      position: fixed;
+      right: 0;
+      /*top: 0;*/
+      z-index: 1;
+    }
+  </style>
+</head>
+<body onload="init()">
+  <div class="menu" id="id-menu"></div>
+  <div class="main" id="id-main">
+    <div style="margin: 10px">
+      <canvas style="margin: 10px; border: solid 1px" id="id-canvas"></canvas>
+    </div>
+  </div>
+  <div class="preview" id="id-preview"></div>
+
+  <script type="text/javascript" src="cmp/cmp-btn.js"></script>
+  <script type="text/javascript" src="cmp/cmp-common.js"></script>
+  <script type="text/javascript" src="cmp/cmp-input.js"></script>
+  <script type="text/javascript" src="cmp/cmp-raw-drawer.js"></script>
+  <script type="text/javascript" src="cmp/cmp-select.js"></script>
+  <script type="text/javascript" src="fnc/fnc-save.js"></script>
+  <script type="text/javascript" src="fnc/fnc-draw.js"></script>
+  <script type="text/javascript" src="fnc/fnc-raw-info.js"></script>
+  <script type="text/javascript" src="fnc/fnc-transform-raw.js"></script>
+  <script type="text/javascript" src="fnc/fnc-raw-mtx.js"></script>
+  <script>
+    let rawSetList = []
+    let placeSetList = []
+
+    let rawEditList = []
+
+    let canvas
+    let ctx
+    let size = 20
+    let crntI = -1
+
+    function init() {
+      const main = document.getElementById('id-main')
+      canvas = document.getElementById('id-canvas')
+      canvas.width = main.offsetWidth - 20 * 3
+      canvas.height = main.offsetHeight - 20 * 3
+      ctx = canvas.getContext('2d')
+
+      loadRawSetList()
+    }
+
+    function loadRawSetList() {
+      const request = new Request('/str-set/raw-set-list')
+      fetch(request).then((response) => response.json()).then((json) => {
+        console.log(json)
+        if (json.code === 'list') {
+          for (const str of json.list) {
+            rawSetList.push(str)
+          }
+          loadPlaceSetList()
+        }
+      })
+    }
+
+    function loadPlaceSetList() {
+      const request = new Request('/str-set/place-raw-set-list')
+      fetch(request).then((response) => response.json()).then((json) => {
+        console.log(json)
+        if (json.code === 'list') {
+          for (const str of json.list) {
+            placeSetList.push(str)
+          }
+          makeMenu()
+        }
+      })
+    }
+
+    function makeMenu() {
+      const menu = document.getElementById('id-menu')
+      makeInputRawUCode(menu)
+      makeRawPlaceEdit(menu)
+      makeEditExpand(menu)
+      makeEditAddColumn(menu)
+      makeEditAddRow(menu)
+      makeEditRotateI(menu)
+    }
+
+    function makeInputRawUCode(menu) {
+      const container = createContainer()
+      menu.appendChild(container.border)
+      makeInputTextBtn('id-input-place-raw-ucode', container.content, 'place raw uCode: ', 'load',
+        () => {
+          loadPlace()
+        })
+      makeInputTextBtn('id-input-raw-ucode', container.content, 'raw uCode: ', 'add',
+        () => {
+          addRaw()
+        })
+      // list: [ { id: '', labelTxt: '', onClick: null } ]
+      makeBtnGroup(container.content, [
+        { id: 'id-btn-print', labelTxt: 'print', onClick: () => { print() } },
+        { id: 'id-btn-save', labelTxt: 'save', onClick: () => { save() } }
+      ])
+      makeSimpleTxtDiv('id-txt-div-post-result', container.content, '')
+    }
+
+    function makeRawPlaceEdit(menu) {
+      const container = createContainer()
+      container.content.innerText = 'current raw info'
+      menu.appendChild(container.border)
+      makeSimpleTxtDiv('id-txt-div-raw-place', container.content, `[${crntI}]`)
+      makeBtnGroup(container.content, [
+        { id: 'id-btn-next', labelTxt: 'next',
+          onClick: () => {
+            crntI++
+            if (crntI >= rawEditList.length) crntI = 0
+            updateCrnt()
+          } },
+        { id: 'id-btn-prev', labelTxt: 'prev',
+          onClick: () => {
+            crntI--
+            if (crntI < 0) crntI = rawEditList.length - 1
+            updateCrnt()
+          } },
+        { id: 'id-btn-front', labelTxt: 'front',
+          onClick: () => {
+            if (rawEditList.length < 0) return
+            let next = crntI + 1
+            if (next >= rawEditList.length) next = rawEditList.length - 1
+            if (crntI === next) return
+            const nLine = rawEditList[next]
+            const crnt = rawEditList[crntI]
+            rawEditList[crntI] = nLine
+            rawEditList[next] = crnt
+            crntI = next
+            updateCrnt()
+          } },
+        { id: 'id-btn-back', labelTxt: 'back',
+          onClick: () => {
+            if (rawEditList.length < 0) return
+            let prev = crntI - 1
+            if (prev < 0) prev = 0
+            if (crntI === prev) return
+            const pLine = rawEditList[prev]
+            const crnt = rawEditList[crntI]
+            rawEditList[prev] = crnt
+            rawEditList[crntI] = pLine
+            crntI = prev
+            updateCrnt()
+          } },
+        { id: 'id-btn-remove', labelTxt: 'remove',
+          onClick: () => {
+            if (rawEditList.length < 0) return
+            rawEditList.splice(crntI, 1)
+            if (rawEditList.length <= 0) {
+              crntI = -1
+              draw()
+            } else {
+              crntI = 0
+              updateCrnt()
+            }
+          } },
+        { id: 'id-btn-reset', labelTxt: 'reset',
+          onClick: () => {
+            resetTransInfo()
+          } }
+      ])
+      makeInputNum('id-input-raw-x', container.content, 'x: ', 0,
+        () => {
+          const crntEdit = rawEditList[crntI]
+          crntEdit.x = getInputValueNumber('id-input-raw-x')
+          draw()
+        })
+      makeInputNum('id-input-raw-y', container.content, 'y: ', 0,
+        () => {
+          const crntEdit = rawEditList[crntI]
+          crntEdit.y = getInputValueNumber('id-input-raw-y')
+          draw()
+        })
+      makeInputNum('id-input-raw-szw', container.content, 'szw: ', 0,
+        () => {
+          const crntEdit = rawEditList[crntI]
+          crntEdit.szw = getInputValueNumber('id-input-raw-szw')
+          draw()
+        })
+      makeInputNum('id-input-raw-szh', container.content, 'szy: ', 0,
+        () => {
+          const crntEdit = rawEditList[crntI]
+          crntEdit.szh = getInputValueNumber('id-input-raw-szh')
+          draw()
+        })
+    }
+
+    function makeEditExpand(menu) {
+      const container = createContainer()
+      menu.appendChild(container.border)
+      makeInputCheckBox(container.content, 'id-checkbox-expand-fit', 'fit expand', true,
+        () => {
+          const crntEdit = rawEditList[crntI]
+          crntEdit.expandInfo.isFit = getChecked('id-checkbox-expand-fit')
+        })
+      makeInputNumBtn('id-input-expand-sn', container.content, 'expand sn: ', 'expand',
+        () => {
+          const crntEdit = rawEditList[crntI]
+          crntEdit.expandInfo.sn = getInputValueNumber('id-input-expand-sn')
+
+          if (crntEdit.expandInfo.sn > 1) {
+            if (crntEdit.transRawInfo) {
+              crntEdit.transRawInfo = expandRawSimple(crntEdit.transRawInfo, crntEdit.expandInfo.sn)
+            } else {
+              crntEdit.transRawInfo = expandRawSimple(crntEdit.rawInfo, crntEdit.expandInfo.sn)
+            }
+          }
+
+          draw()
+        })
+    }
+
+    function makeEditAddColumn(menu) {
+      const container = createContainer()
+      menu.appendChild(container.border)
+      makeInputNum('id-input-add-column-c', container.content, 'add column c: ', 0,
+        () => {
+          const crntEdit = rawEditList[crntI]
+          crntEdit.addColumnInfo.target = getInputValueNumber('id-input-add-column-c')
+        })
+      makeInputNumBtn('id-input-add-column', container.content, 'add: ', 'add c',
+        () => {
+          const crntEdit = rawEditList[crntI]
+          crntEdit.addColumnInfo.add = getInputValueNumber('id-input-add-column')
+          if (crntEdit.addColumnInfo.add !== 0) {
+            let rawInfo = crntEdit.rawInfo
+            if (crntEdit.transRawInfo) rawInfo = crntEdit.transRawInfo
+            if (crntEdit.addColumnInfo.add > 0) {
+              crntEdit.transRawInfo = addColumn(rawInfo, crntEdit.addColumnInfo.target, crntEdit.addColumnInfo.add)
+            } else {
+              crntEdit.transRawInfo = removeColumn(rawInfo, crntEdit.addColumnInfo.target, crntEdit.addColumnInfo.add)
+            }
+          }
+          draw()
+        }, 0)
+    }
+
+    function makeEditAddRow(menu) {
+      const container = createContainer()
+      menu.appendChild(container.border)
+      makeInputNum('id-input-add-row-r', container.content, 'add row r: ', 0,
+        () => {
+          const crntEdit = rawEditList[crntI]
+          crntEdit.addRowInfo.target = getInputValueNumber('id-input-add-row-r')
+        })
+      makeInputNumBtn('id-input-add-row', container.content, 'add: ', 'add r',
+        () => {
+          const crntEdit = rawEditList[crntI]
+          crntEdit.addRowInfo.add = getInputValueNumber('id-input-add-row')
+          if (crntEdit.addRowInfo.add !== 0) {
+            let rawInfo = crntEdit.rawInfo
+            if (crntEdit.transRawInfo) rawInfo = crntEdit.transRawInfo
+            if (crntEdit.addRowInfo.add > 0) {
+              crntEdit.transRawInfo = addRow(rawInfo, crntEdit.addRowInfo.target, crntEdit.addRowInfo.add)
+            } else {
+              crntEdit.transRawInfo = removeRow(rawInfo, crntEdit.addRowInfo.target, crntEdit.addRowInfo.add)
+            }
+          }
+          draw()
+        }, 0)
+    }
+
+    function makeEditRotateI(menu) {
+      const container = createContainer()
+      menu.appendChild(container.border)
+      makeSelect('id-select-rotate-i', container.content, 'rotateI: ', 'choose rotateI',
+        () => {
+          const crntEdit = rawEditList[crntI]
+          crntEdit.rotateIInfo.i = getInputValueNumber('id-select-rotate-i')
+        }, [0,1,2,3,4,5,6,7])
+      makeBtnGroup(container.content, [{ id: 'id-btn-rotate-i', labelTxt: 'rotateI',
+        onClick: () => {
+          const crntEdit = rawEditList[crntI]
+          if (crntEdit.rotateIInfo.i > 0) {
+            let rawInfo = crntEdit.rawInfo
+            if (crntEdit.transRawInfo) rawInfo = crntEdit.transRawInfo
+            crntEdit.transRawInfo = shiftByRotateI(rawInfo, crntEdit.rotateIInfo.i)
+            draw()
+          }
+        }}])
+    }
+
+    function print() {
+      console.log(rawEditList)
+    }
+
+    // 1. save each transRawInfo set (hasn't : rawInfo set)
+    // 2. save place set
+    function save() {
+      const label = document.getElementById('id-txt-div-post-result')
+      label.innerText = ''
+      // uCode/num/rawSet uCode,x,y,szw,szh/rawSet uCode,x,y,szw,szh/ ... list
+      const placeUCode = `place-raw-${getCurrentDateUCode()}`
+      let svStr = `${placeUCode}/${rawEditList.length}`
+      for (const edit of rawEditList) {
+        let uCode = edit.rawInfo.uCode
+        const x = edit.x
+        const y = edit.y
+        let szw = edit.szw
+        let szh = edit.szh
+        if (edit.transRawInfo) {
+          uCode = edit.transRawInfo.uCode
+          if (edit.expandInfo.sn > 1) {
+            if (edit.expandInfo.isFit) {
+              szw = edit.szw / edit.expandInfo.sn
+              szh = edit.szh / edit.expandInfo.sn
+            }
+          }
+          const transStr = createRawStrSet(edit.transRawInfo)
+          saveString(uCode, transStr)
+
+          postStrSet({
+            uCode: uCode,
+            str: transStr,
+            type: 'raw-set',
+            dsg: '',
+            memo0: '',
+            memo1: '',
+            memo2: '',
+          }, label)
+        }
+        svStr += `/${uCode},${x},${y},${szw},${szh}`
+      }
+      saveString(placeUCode, svStr)
+
+      postStrSet({
+        uCode: placeUCode,
+        str: svStr,
+        type: 'place-raw-set',
+        dsg: '',
+        memo0: '',
+        memo1: '',
+        memo2: '',
+      }, label)
+    }
+
+    function postStrSet(obj, label) {
+      const request = new Request('/str-set/add-str', {
+        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', body: JSON.stringify(obj)
+      })
+      fetch(request).then(response => {
+        return response.json()
+      }).then(result => {
+        console.log(result)
+        const str = `${obj.type}: ${result.code}`
+        label.innerText = `${label.innerText}, ${str}`
+      })
+    }
+
+    function addRaw() {
+      const uCode = getInputValue('id-input-raw-ucode')
+      const set = rawSetList.find(s => s.split('/')[0] === uCode)
+      const rawInfo = createRawInfo(set)
+      const editInfo = {
+        x: 10,
+        y: 10,
+        szw: size,
+        szh: size,
+        rawInfo: rawInfo,
+        transRawInfo: null,
+        expandInfo: {
+          isFit: true,
+          sn: 1
+        },
+        addColumnInfo: {
+          add: 0,
+          target: 0
+        },
+        addRowInfo: {
+          add: 0,
+          target: 0
+        },
+        rotateIInfo: {
+          i: 0
+        }
+      }
+      crntI = rawEditList.length
+      rawEditList.push(editInfo)
+      updateCrnt()
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+      for (const editInfo of rawEditList) {
+        if (editInfo.transRawInfo) {
+          let szw = editInfo.szw
+          let szh = editInfo.szh
+          if (editInfo.expandInfo.sn > 1) {
+            if (editInfo.expandInfo.isFit) {
+              szw = editInfo.szw / editInfo.expandInfo.sn
+              szh = editInfo.szh / editInfo.expandInfo.sn
+            }
+          }
+          drawRawSimple(ctx, editInfo.transRawInfo, editInfo.x, editInfo.y, szw, szh)
+        } else {
+          drawRawSimple(ctx, editInfo.rawInfo, editInfo.x, editInfo.y, editInfo.szw, editInfo.szh)
+        }
+      }
+    }
+
+    function updateCrnt() {
+      const crntEdit = rawEditList[crntI]
+      changeSimpleTxtDiv('id-txt-div-raw-place', `[${crntI}]`)
+      changeInputValue('id-input-raw-x', crntEdit.x)
+      changeInputValue('id-input-raw-y', crntEdit.y)
+      changeInputValue('id-input-raw-szw', crntEdit.szw)
+      changeInputValue('id-input-raw-szh', crntEdit.szh)
+      setChecked('id-checkbox-expand-fit', crntEdit.expandInfo.isFit)
+      changeInputValue('id-input-expand-sn', crntEdit.expandInfo.sn)
+      changeInputValue('id-input-add-column-c', crntEdit.addColumnInfo.target)
+      changeInputValue('id-input-add-column', crntEdit.addColumnInfo.add)
+      changeInputValue('id-input-add-row-r', crntEdit.addRowInfo.target)
+      changeInputValue('id-input-add-row', crntEdit.addRowInfo.add)
+      changeInputValue('id-select-rotate-i', crntEdit.rotateIInfo.i)
+      draw()
+    }
+
+    function resetTransInfo() {
+      const crntEdit = rawEditList[crntI]
+      crntEdit.transRawInfo = null
+      changeInputValue('id-input-expand-sn', 1)
+      changeInputValue('id-input-add-column-c', 0)
+      changeInputValue('id-input-add-column', 0)
+      changeInputValue('id-input-add-row-r', 0)
+      changeInputValue('id-input-add-row', 0)
+      changeInputValue('id-select-rotate-i', 0)
+      draw()
+    }
+
+    function loadPlace() {
+      rawEditList = []
+      const uCode = getInputValue('id-input-place-raw-ucode')
+      const set = placeSetList.find(s => s.split('/')[0] === uCode)
+      const placeInfo = createPlaceRawInfo(set)
+      for (const info of placeInfo.list) {
+        const rawSet = rawSetList.find(s => s.split('/')[0] === info.uCode)
+        const rawInfo = createRawInfo(rawSet)
+        const editInfo = {
+          x: info.x,
+          y: info.y,
+          szw: info.szw,
+          szh: info.szh,
+          rawInfo: rawInfo,
+          transRawInfo: null,
+          expandInfo: {
+            isFit: true,
+            sn: 1
+          },
+          addColumnInfo: {
+            add: 0,
+            target: 0
+          },
+          addRowInfo: {
+            add: 0,
+            target: 0
+          },
+          rotateIInfo: {
+            i: 0
+          }
+        }
+        rawEditList.push(editInfo)
+      }
+      crntI = 0
+      updateCrnt()
+    }
+  </script>
+</body>
+</html>

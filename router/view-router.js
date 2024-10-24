@@ -98,4 +98,12 @@ router.get('/place-raw-edit-p-list', (req, res) => {
   res.render('place-raw-edit-p-list.html')
 })
 
+router.get('/transform-raw', (req, res) => {
+  res.render('transform-raw.html')
+})
+
+router.get('/transform-raw-list', (req, res) => {
+  res.render('transform-raw-list')
+})
+
 exports.router = router

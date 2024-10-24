@@ -180,6 +180,11 @@ function getPlaceEditPSetList(callback) {
 }
 exports.getPlaceEditPSetList = getPlaceEditPSetList
 
+function getPlaceRawSetList(callback) {
+  getSetListByType('place-raw-set', callback)
+}
+exports.getPlaceRawSetList = getPlaceRawSetList
+
 function getSetListByType(type, callback) {
   const info = {
     params: [type],
