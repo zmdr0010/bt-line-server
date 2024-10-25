@@ -58,6 +58,19 @@
     let rawEdit
     let sx = 10
     let sy = 10
+    let isMouseEditing = false
+    let isKeyboardEditing = false
+    let kEditor = {
+      c: -1,
+      r: -1,
+      color: 'red',
+      radius: 8,
+      keyLeft: 'b',
+      keyRight: 'm',
+      keyUp: 'h',
+      keyDown: 'n',
+      keyOnOff: 'd'
+    }
 
     function init() {
       const main = document.getElementById('id-main')
@@ -65,6 +78,73 @@
       canvas.width = main.offsetWidth - 20 * 3
       canvas.height = main.offsetHeight - 20 * 3
       ctx = canvas.getContext('2d')
+
+      canvas.addEventListener('mousedown', (e) => {
+        console.log(`mouse down offset x: ${e.offsetX}, y: ${e.offsetY}`)
+        if (!rawEdit) return
+        let rawInfo = rawEdit.transRawInfo
+        if (!rawInfo) {
+          rawInfo = structuredClone(rawEdit.rawInfo)
+          rawEdit.transRawInfo = rawInfo
+          rawInfo.uCode = `raw-${getCurrentDateUCode()}`
+        }
+        const mouseX = e.offsetX
+        const mouseY = e.offsetY
+        const szw = rawEdit.szw
+        const szh = rawEdit.szh
+        const c = Math.floor((mouseX - sx) / szw)
+        const r = Math.floor((mouseY - sy) / szh)
+        const index = r * rawInfo.column + c
+        console.log(`c: ${c}, r: ${r}, index: ${index}`)
+        const str = `mouse down:  c: ${c}, r: ${r}, index: ${index} (x: ${e.offsetX}, y: ${e.offsetY})`
+        changeSimpleTxtDiv('id-txt-div-mouse-down', str)
+        if (isMouseEditing && !(c >= rawInfo.column || r >= rawInfo.row)) {
+          const oRw = rawInfo.raw[index]
+          let rw = 0
+          if (oRw === 0) rw = 1
+          rawInfo.raw[index] = rw
+          updateKeyInfoMap()
+          draw()
+        }
+      })
+
+      document.addEventListener('keydown', (e) => {
+        if (e.key === kEditor.keyLeft) {
+          kEditor.c--
+          draw()
+        }
+        if (e.key === kEditor.keyRight) {
+          kEditor.c++
+          draw()
+        }
+        if (e.key === kEditor.keyUp) {
+          kEditor.r--
+          draw()
+        }
+        if (e.key === kEditor.keyDown) {
+          kEditor.r++
+          draw()
+        }
+        if (e.key === kEditor.keyOnOff) {
+          let rawInfo = rawEdit.transRawInfo
+          if (!rawInfo) {
+            rawInfo = structuredClone(rawEdit.rawInfo)
+            rawEdit.transRawInfo = rawInfo
+            rawInfo.uCode = `raw-${getCurrentDateUCode()}`
+          }
+          const c = kEditor.c
+          const r = kEditor.r
+          if (c < 0 || c >= rawInfo.column) return
+          if (r < 0 || r >= rawInfo.row) return
+          const index = r * rawInfo.column + c
+          const oRw = rawInfo.raw[index]
+          let rw = 0
+          if (oRw === 0) rw = 1
+          rawInfo.raw[index] = rw
+          updateKeyInfoMap()
+          draw()
+        }
+      })
 
       loadRawSetList()
     }
@@ -114,6 +194,15 @@
     function makeRawPlaceEdit(menu) {
       const container = createContainer()
       menu.appendChild(container.border)
+      makeSimpleTxtDiv('id-txt-div-raw-size', container.content, 'raw size')
+      makeSimpleTxtDiv('id-txt-div-mouse-down', container.content, 'mouse down info')
+      makeInputCheckBox(container.content, 'id-checkbox-is-mouse-editing', 'isMouseEditing', isMouseEditing,
+        () => { isMouseEditing = getChecked('id-checkbox-is-mouse-editing') })
+      makeInputCheckBox(container.content, 'id-checkbox-is-keyboard-editing', 'isKeyboardEditing', isKeyboardEditing,
+        () => {
+          isKeyboardEditing = getChecked('id-checkbox-is-keyboard-editing')
+          draw()
+        })
       makeBtnGroup(container.content, [
         { id: 'id-btn-reset', labelTxt: 'reset',
           onClick: () => {
@@ -314,18 +403,26 @@
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height)
 
+      let szw = rawEdit.szw
+      let szh = rawEdit.szh
       if (rawEdit.transRawInfo) {
-        let szw = rawEdit.szw
-        let szh = rawEdit.szh
         if (rawEdit.expandInfo.sn > 1) {
           if (rawEdit.expandInfo.isFit) {
             szw = rawEdit.szw / rawEdit.expandInfo.sn
             szh = rawEdit.szh / rawEdit.expandInfo.sn
           }
         }
+        drawArea(ctx, rawEdit.transRawInfo.column * szw, rawEdit.transRawInfo.row * szh, sx, sy, 'lightgray')
         drawRawSimple(ctx, rawEdit.transRawInfo, rawEdit.x, rawEdit.y, szw, szh)
       } else {
-        drawRawSimple(ctx, rawEdit.rawInfo, rawEdit.x, rawEdit.y, rawEdit.szw, rawEdit.szh)
+        drawArea(ctx, rawEdit.rawInfo.column * szw, rawEdit.rawInfo.row * szh, sx, sy, 'lightgray')
+        drawRawSimple(ctx, rawEdit.rawInfo, rawEdit.x, rawEdit.y, szw, szh)
+      }
+
+      if (isKeyboardEditing && kEditor.c >= 0 && kEditor.r >= 0) {
+        const x = kEditor.c * szw + sx + szw * 0.5
+        const y = kEditor.r * szh + sy + szh * 0.5
+        drawCircle(ctx, x, y, kEditor.radius, kEditor.color)
       }
     }
 
