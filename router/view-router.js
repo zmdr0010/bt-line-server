@@ -110,4 +110,12 @@ router.get('/transform-line', (req, res) => {
   res.render('transform-line.html')
 })
 
+router.get('/making-raw-edit-p', (req, res) => {
+  res.render('making-raw-edit-p')
+})
+
+router.get('/raw-edit-p-list', (req, res) => {
+  res.render('raw-edit-p-list.html')
+})
+
 exports.router = router

@@ -162,6 +162,32 @@ function getMtxIndexByKey(key) {
   return -1
 }
 
+function getMtxKeyByIndex(index) {
+  switch (index) {
+    case 0: return 'dot'
+    case 1: return 'topEdge'
+    case 2: return 'leftEdge'
+    case 3: return 'bottomEdge'
+    case 4: return 'rightEdge'
+    case 5: return 'leftTop'
+    case 6: return 'leftBottom'
+    case 7: return 'rightBottom'
+    case 8: return 'rightTop'
+    case 9: return 'hCLine'
+    case 10: return 'vCLine'
+    case 11: return 'topLine'
+    case 12: return 'leftLine'
+    case 13: return 'bottomLine'
+    case 14: return 'rightLine'
+    default: return ''
+  }
+}
+
+function getKeyList() {
+  return [ 'dot', 'topEdge', 'leftEdge', 'bottomEdge', 'rightEdge', 'leftTop', 'leftBottom',
+    'rightBottom', 'rightTop', 'hCLine', 'vCLine', 'topLine', 'leftLine', 'bottomLine', 'rightLine' ]
+}
+
 // list = [{key: 'topEdge', m: [1,1,0,1,1,0]}]
 function createSimpleMtxSetList(column, row, list) {
   const length = column * row
@@ -176,4 +202,25 @@ function createSimpleMtxSetList(column, row, list) {
     if (index > 0) mtxSetList[index] = info.m
   }
   return mtxSetList
+}
+
+function createKeyInfoMap(info) {
+  const map = new Map()
+  for (let i=0; i<info.raw.length; i++) {
+    const rw = info.raw[i]
+    const check = checkRawCorner(i, rw, info)
+    if (check < 0 || check > 14) continue
+    const key = getMtxKeyByIndex(check)
+    let keyInfo = map.get(key)
+    if (!keyInfo) {
+      keyInfo = {
+        key: key,
+        i: check,
+        iList: []
+      }
+      map.set(key, keyInfo)
+    }
+    keyInfo.iList.push(i)
+  }
+  return map
 }

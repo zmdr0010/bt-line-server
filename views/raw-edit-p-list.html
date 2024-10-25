@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>raw edit p list</title>
+
+  <style>
+    #snackbar {
+      visibility: hidden;
+      min-width: 250px;
+      margin-left: -125px;
+      background-color: #333;
+      color: #fff;
+      text-align: center;
+      border-radius: 2px;
+      padding: 16px;
+      position: fixed;
+      z-index: 1;
+      left: 50%;
+      bottom: 30px;
+    }
+    #snackbar.show {
+      visibility: visible;
+      -webkit-animation: fadein 0.5s, fadeout 0.5s 2.5s;
+      animation: fadein 0.5s, fadeout 0.5s 2.5s
+    }
+    @-webkit-keyframes fadein {
+      from {bottom: 0; opacity: 0}
+      to {bottom: 30px; opacity: 1}
+    }
+    @keyframes fadein {
+      from {bottom: 0; opacity: 0}
+      to {bottom: 30px; opacity: 1}
+    }
+    @-webkit-keyframes fadeout {
+      from {bottom: 30px; opacity: 1}
+      to {bottom: 0; opacity: 0}
+    }
+    @keyframes fadeout {
+      from {bottom: 30px; opacity: 1}
+      to {bottom: 0; opacity: 0}
+    }
+  </style>
+</head>
+<body onload="init()">
+  <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr" id="id-container"></div>
+  <div id="snackbar">Some text some message...</div>
+
+  <script type="text/javascript" src="fnc/fnc-outline.js"></script>
+  <script type="text/javascript" src="fnc/fnc-outline-edge.js"></script>
+  <script type="text/javascript" src="fnc/fnc-outline-point.js"></script>
+  <script type="text/javascript" src="fnc/fnc-outline-edit-p-set.js"></script>
+  <script type="text/javascript" src="fnc/fnc-save.js"></script>
+  <script type="text/javascript" src="fnc/fnc-line-info.js"></script>
+  <script type="text/javascript" src="fnc/fnc-merge-line-info.js"></script>
+  <script type="text/javascript" src="fnc/fnc-draw.js"></script>
+  <script type="text/javascript" src="fnc/fnc-divide-line.js"></script>
+  <script type="text/javascript" src="fnc/fnc-transform-line-info.js"></script>
+  <script type="text/javascript" src="fnc/fnc-raw-info.js"></script>
+  <script type="text/javascript" src="cmp/cmp-btn.js"></script>
+  <script type="text/javascript" src="cmp/cmp-common.js"></script>
+  <script type="text/javascript" src="cmp/cmp-input.js"></script>
+  <script type="text/javascript" src="cmp/cmp-raw-drawer.js"></script>
+  <script type="text/javascript" src="cmp/cmp-select.js"></script>
+  <script>
+    let rawSetList = []
+    let editPSetList = []
+
+    let szw = 20
+    let szh = 20
+
+    let isDrawingIndex = false
+
+    function init() {
+      const urlPrm = new URLSearchParams(window.location.search)
+      const prmIsOn = urlPrm.get('isOn')
+      if (prmIsOn) isDrawingIndex = (prmIsOn.toLowerCase() === 'true')
+
+      loadRawSetList()
+    }
+
+    function loadRawSetList() {
+      const request = new Request('/str-set/raw-set-list')
+      fetch(request).then((response) => response.json()).then((json) => {
+        console.log(json)
+        if (json.code === 'list') {
+          for (const str of json.list) {
+            rawSetList.push(str)
+          }
+          loadEditSetList()
+        }
+      })
+    }
+
+    function loadEditSetList() {
+      const request = new Request('/str-set/edit-p-set-list')
+      fetch(request).then((response) => response.json()).then((json) => {
+        console.log(json)
+        if (json.code === 'list') {
+          for (const str of json.list) {
+            editPSetList.push(str)
+          }
+          makeList()
+        }
+      })
+    }
+
+    function makeList() {
+      const container = document.getElementById('id-container')
+      for (const set of editPSetList) {
+        const editPInfo = createEditPSetInfo(set)
+        const placeInfo = createEmptyPlaceInfo()
+        placeInfo.pSetInfo = editPInfo
+        makeLine(placeInfo, rawSetList)
+        const w = placeInfo.lineInfo.w
+        const h = placeInfo.lineInfo.h
+        const canvas = document.createElement('canvas')
+        canvas.width = w + 20
+        canvas.height = h + 20
+        const ctx = canvas.getContext('2d')
+        drawLineInfo(ctx, placeInfo.lineInfo, 10, 10)
+        const div = document.createElement('div')
+        div.appendChild(canvas)
+        const label = document.createElement('label')
+        label.innerText = editPInfo.uCode
+        div.appendChild(label)
+        container.appendChild(div)
+
+        div.addEventListener('click', () => {
+          navigator.clipboard.writeText(label.innerText)
+
+          const snackbar = document.getElementById('snackbar')
+          snackbar.innerText = `copied: ${label.innerText}`
+          snackbar.className = 'show'
+          setTimeout(() => { snackbar.className = snackbar.className.replace('show', '') }, 3000)
+        })
+      }
+    }
+  </script>
+</body>
+</html>

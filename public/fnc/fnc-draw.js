@@ -129,6 +129,8 @@ function drawRawSimple(ctx, info, sx, sy, size, szh=-1) {
     const y = r * sizeH + sy
     if (rw > 0) {
       ctx.beginPath()
+      ctx.fillStyle = 'lightgray'
+      ctx.fillRect(x, y, sizeW, sizeH)
       ctx.lineWidth = 1
       ctx.strokeStyle = 'black'
       ctx.strokeRect(x, y, sizeW, sizeH)
