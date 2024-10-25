@@ -94,6 +94,8 @@
       }
     }
 
+    let isDrawingP4 = false
+
     function init() {
       const main = document.getElementById('id-main')
       canvas = document.getElementById('id-canvas')
@@ -220,50 +222,95 @@
       menu.appendChild(container.border)
       makeInputCheckBox(container.content, 'id-checkbox-p4-is-new', 'isNew: ', false,
         () => { editInfo.p4Info.isNew = getChecked('id-checkbox-p4-is-new') })
+      makeInputCheckBox(container.content, 'id-checkbox-p4-is-drawing', 'isDrawing: ', isDrawingP4,
+        () => {
+          isDrawingP4 = getChecked('id-checkbox-p4-is-drawing')
+          draw()
+        })
       makeInputNum('id-input-p4-lt-scx', container.content, 'lt.scx: ', editInfo.p4Info.lt.scx,
         () => {
           editInfo.p4Info.lt.scx = getInputValueNumber('id-input-p4-lt-scx')
           // if (!editInfo.p4Info.isNew) editingP4()
+          if (isDrawingP4) draw()
         }, 0.01)
       makeInputNum('id-input-p4-lt-scy', container.content, 'lt.scy: ', editInfo.p4Info.lt.scy,
         () => {
           editInfo.p4Info.lt.scy = getInputValueNumber('id-input-p4-lt-scy')
           // if (!editInfo.p4Info.isNew) editingP4()
+          if (isDrawingP4) draw()
         }, 0.01)
       makeInputNum('id-input-p4-rt-scx', container.content, 'rt.scx: ', editInfo.p4Info.rt.scx,
         () => {
           editInfo.p4Info.rt.scx = getInputValueNumber('id-input-p4-rt-scx')
           // if (!editInfo.p4Info.isNew) editingP4()
+          if (isDrawingP4) draw()
         }, 0.01)
       makeInputNum('id-input-p4-rt-scy', container.content, 'rt.scy: ', editInfo.p4Info.rt.scy,
         () => {
           editInfo.p4Info.rt.scy = getInputValueNumber('id-input-p4-rt-scy')
           // if (!editInfo.p4Info.isNew) editingP4()
+          if (isDrawingP4) draw()
         }, 0.01)
       makeInputNum('id-input-p4-lb-scx', container.content, 'lb.scx: ', editInfo.p4Info.lb.scx,
         () => {
           editInfo.p4Info.lb.scx = getInputValueNumber('id-input-p4-lb-scx')
           // if (!editInfo.p4Info.isNew) editingP4()
+          if (isDrawingP4) draw()
         }, 0.01)
       makeInputNum('id-input-p4-lb-scy', container.content, 'lb.scy: ', editInfo.p4Info.lb.scy,
         () => {
           editInfo.p4Info.lb.scy = getInputValueNumber('id-input-p4-lb-scy')
           // if (!editInfo.p4Info.isNew) editingP4()
+          if (isDrawingP4) draw()
         }, 0.01)
       makeInputNum('id-input-p4-rb-scx', container.content, 'rb.scx: ', editInfo.p4Info.rb.scx,
         () => {
           editInfo.p4Info.rb.scx = getInputValueNumber('id-input-p4-rb-scx')
           // if (!editInfo.p4Info.isNew) editingP4()
+          if (isDrawingP4) draw()
         }, 0.01)
       makeInputNum('id-input-p4-rb-scy', container.content, 'rb.scy: ', editInfo.p4Info.rb.scy,
         () => {
           editInfo.p4Info.rb.scy = getInputValueNumber('id-input-p4-rb-scy')
           // if (!editInfo.p4Info.isNew) editingP4()
+          if (isDrawingP4) draw()
         }, 0.01)
-      makeBtnGroup(container.content, [ { id: 'id-btn-change-p4', labelTxt: 'change p4',
-        onClick: () => {
-          editingP4()
-        } } ])
+      makeBtnGroup(container.content, [
+        {
+          id: 'id-btn-change-p4', labelTxt: 'change p4',
+          onClick: () => {
+            editingP4()
+          }
+        },
+        {
+          id: 'id-btn-draw-p4', labelTxt: 'draw',
+          onClick: () => {
+            draw()
+          }
+        },
+        {
+          id: 'id-btn-reset-p4', labelTxt: 'reset',
+          onClick: () => {
+            editInfo.p4Info.lt.scx = 0
+            editInfo.p4Info.lt.scy = 0
+            editInfo.p4Info.rt.scx = 1
+            editInfo.p4Info.rt.scy = 0
+            editInfo.p4Info.lb.scx = 0
+            editInfo.p4Info.lb.scy = 1
+            editInfo.p4Info.rb.scx = 1
+            editInfo.p4Info.rb.scy = 1
+            changeInputValue('id-input-p4-lt-scx', 0)
+            changeInputValue('id-input-p4-lt-scy', 0)
+            changeInputValue('id-input-p4-rt-scx', 1)
+            changeInputValue('id-input-p4-rt-scy', 0)
+            changeInputValue('id-input-p4-lb-scx', 0)
+            changeInputValue('id-input-p4-lb-scy', 1)
+            changeInputValue('id-input-p4-rb-scx', 1)
+            changeInputValue('id-input-p4-rb-scy', 1)
+            if (isDrawingP4) draw()
+          }
+        }
+      ])
     }
 
     function editingP4() {
@@ -292,10 +339,31 @@
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height)
 
+      let drawingLine = editInfo.lineInfo
       if (editInfo.transLine) {
+        drawingLine = editInfo.transLine
         drawLineInfo(ctx, editInfo.transLine, sx, sy)
       } else {
         if (editInfo.lineInfo) drawLineInfo(ctx, editInfo.lineInfo, sx, sy)
+      }
+      if (drawingLine && isDrawingP4) {
+        const ltX = drawingLine.w * editInfo.p4Info.lt.scx + sx
+        const ltY = drawingLine.h * editInfo.p4Info.lt.scy + sy
+        const rtX = drawingLine.w * editInfo.p4Info.rt.scx + sx
+        const rtY = drawingLine.h * editInfo.p4Info.rt.scy + sy
+        const lbX = drawingLine.w * editInfo.p4Info.lb.scx + sx
+        const lbY = drawingLine.h * editInfo.p4Info.lb.scy + sy
+        const rbX = drawingLine.w * editInfo.p4Info.rb.scx + sx
+        const rbY = drawingLine.h * editInfo.p4Info.rb.scy + sy
+        ctx.beginPath()
+        ctx.lineWidth = 1
+        ctx.strokeStyle = 'red'
+        ctx.moveTo(ltX, ltY)
+        ctx.lineTo(rtX, rtY)
+        ctx.lineTo(rbX, rbY)
+        ctx.lineTo(lbX, lbY)
+        ctx.lineTo(ltX, ltY)
+        ctx.stroke()
       }
     }
 
