@@ -104,6 +104,8 @@ function init(path, name) {
 
 exports.init = init
 
+// strs
+
 function addStr(uCode, str, dsg, type, memo0, memo1, memo2, callback) {
   const db = openDb()
   const checkSql = `SELECT ucode ucode FROM strs WHERE ucode = ?`
@@ -279,3 +281,87 @@ function getStrSet(info, callback) {
 
   db.close()
 }
+
+// groups
+
+function addGroup(name, memo0, memo1, memo2, callback) {
+  const db = openDb()
+  const addSql = 'INSERT INTO groups (name, memo0, memo1, memo2) VALUES(?,?,?,?)'
+  db.run(addSql, [name, memo0, memo1, memo2], (err) => {
+    if (err) {
+      if (callback) callback({ code: 'error', msg: err.message })
+      return
+    }
+    if (callback) callback({ code: 'added' })
+  })
+  db.close()
+}
+exports.addGroup = addGroup
+
+function getGroupList(callback) {
+  const db = openDb()
+  // const sql = `SELECT group_id id, name name, memo0 memo0, memo1 memo1, memo2 memo2 FROM groups`
+  const sql = `SELECT group_id id, name, memo0, memo1, memo2 FROM groups`
+  db.all(sql, [], (err, rows) => {
+    if (err) {
+      if (callback) callback({ code: 'error', msg: err.message })
+      return
+    }
+    const list = []
+    rows.forEach(row => {
+      list.push({
+        id: row.id,
+        name: row.name,
+        memo0: row.memo0,
+        memo1: row.memo1,
+        memo2: row.memo2
+      })
+    })
+    if (callback) callback({ code: 'list', list: list })
+  })
+  db.close()
+}
+exports.getGroupList = getGroupList
+
+function addStrToGroup(uCode, groupId, callback) {
+  const db = openDb()
+  const checkSql = `SELECT str_id id FROM strs WHERE ucode = ?`
+  db.get(checkSql, [uCode], (err, row) => {
+    if (err) {
+      if (callback) callback({ code: 'error', msg: err.message })
+      return
+    }
+    if(row) {
+      const addSql = 'INSERT INTO str_groups (str_id, group_id) VALUES(?,?)'
+      db.run(addSql, [row.id, groupId], (err) => {
+        if (err) {
+          if (callback) callback({ code: 'error', msg: err.message })
+          return
+        }
+        if (callback) callback({ code: 'added' })
+      })
+    } else {
+      if (callback) callback({ code: 'invalid' })
+    }
+  })
+  db.close()
+}
+exports.addStrToGroup = addStrToGroup
+
+function getStrListByGroup(groupId, callback) {
+  const db = openDb()
+  const sql = `SELECT str strSet FROM str_groups INNER JOIN strs ON strs.str_id = str_groups.str_id WHERE group_id = ?`
+  db.all(sql, [groupId], (err, rows) => {
+    if (err) {
+      if (callback) callback({ code: 'error', msg: err.message })
+      return
+    }
+    const list = []
+    rows.forEach(row => {
+      list.push(row.strSet)
+    })
+    if (callback) callback({ code: 'list', list: list })
+  })
+  db.close()
+}
+exports.getStrListByGroup = getStrListByGroup

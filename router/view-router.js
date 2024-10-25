@@ -122,4 +122,14 @@ router.get('/raw-edit-p-list', (req, res) => {
   res.render('raw-edit-p-list.html')
 })
 
+// groups
+
+router.get('/adding-group', (req, res) => {
+  res.render('add-group.html')
+})
+
+router.get('/adding-str-to-group', (req, res) => {
+  res.render('add-str-to-group.html')
+})
+
 exports.router = router

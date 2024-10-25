@@ -115,4 +115,42 @@ router.get('/place-raw-set-list', (req, res) => {
   })
 })
 
+// groups
+
+router.post('/add-group', (req, res) => {
+  console.log(req.body)
+  const name = req.body.name
+  const memo0 = req.body.memo0
+  const memo1 = req.body.memo1
+  const memo2 = req.body.memo2
+  console.log(`add group name: ${name}, memo0: ${memo0}, memo1: ${memo1}, memo2: ${memo2}`)
+  strSetManager.addGroup(name, memo0, memo1, memo2, (result) => {
+    console.log(result)
+    res.json(result)
+  })
+})
+
+router.get('/group-list', (req, res) => {
+  strSetManager.getGroupList((result) => {
+    res.json(result)
+  })
+})
+
+router.post('/add-str-to-group', (req, res) => {
+  console.log(req.body)
+  const uCode = req.body.uCode
+  const groupId = req.body.groupId
+  strSetManager.addStrToGroup(uCode, groupId,(result) => {
+    console.log(result)
+    res.json(result)
+  })
+})
+
+router.get('/str-list/:groupId', (req, res) => {
+  const groupId = req.params.groupId
+  strSetManager.getStrListByGroup(groupId, (result) => {
+    res.json(result)
+  })
+})
+
 exports.router = router
