@@ -10,6 +10,7 @@ let dbPath = ''
 //       preset-bundle,
 //       dvc-srt(device-structure), dvc-srt-bundle, dvc-set
 //       raw-set, place-raw-set, edit-p-set, place-edit-p-set
+//       color-set, color-palette
 
 //// making-line-point / coloring-line-point
 ////    line-point, coloring(1, black) (memo0: line-point) -> line (memo0: line-point,line-point uCode) <- record origin
@@ -186,6 +187,16 @@ function getPlaceRawSetList(callback) {
   getSetListByType('place-raw-set', callback)
 }
 exports.getPlaceRawSetList = getPlaceRawSetList
+
+function getColorSetList(callback) {
+  getSetListByType('color-set', callback)
+}
+exports.getColorSetList = getColorSetList
+
+function getColorPaletteList(callback) {
+  getSetListByType('color-palette', callback)
+}
+exports.getColorPaletteList = getColorPaletteList
 
 function getSetListByType(type, callback) {
   const info = {

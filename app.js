@@ -22,7 +22,8 @@ app.use('/', viewRouter.router) // html script src: ex. '/': fnc/fnc-draw.js <->
 app.use(cors())
 
 app.get('/', (req, res) => {
-  res.send('bt-line')
+  // res.send('bt-line')
+  res.render('index.html')
 })
 
 app.listen(port, () => {

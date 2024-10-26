@@ -132,4 +132,12 @@ router.get('/adding-str-to-group', (req, res) => {
   res.render('add-str-to-group.html')
 })
 
+router.get('/color-list', (req, res) => {
+  res.render('color-list.html')
+})
+
+router.get('/color-palette', (req, res) => {
+  res.render('color-palette.html')
+})
+
 exports.router = router

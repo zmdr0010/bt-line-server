@@ -153,4 +153,16 @@ router.get('/str-list/:groupId', (req, res) => {
   })
 })
 
+router.get('/color-set-list', (req, res) => {
+  strSetManager.getColorSetList((result) => {
+    res.json(result)
+  })
+})
+
+router.get('/color-palette-list', (req, res) => {
+  strSetManager.getColorPaletteList((result) => {
+    res.json(result)
+  })
+})
+
 exports.router = router
