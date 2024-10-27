@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>making dvc tcode bundle</title>
+
+</head>
+<body onload="init()">
+  <div style="margin: 10px" id="id-main">
+  </div>
+
+  <script type="text/javascript" src="fnc/fnc-save.js"></script>
+  <script type="text/javascript" src="fnc/fnc-dvc-srt.js"></script>
+  <script type="text/javascript" src="cmp/cmp-btn.js"></script>
+  <script type="text/javascript" src="cmp/cmp-common.js"></script>
+  <script type="text/javascript" src="cmp/cmp-input.js"></script>
+  <script type="text/javascript" src="cmp/cmp-raw-drawer.js"></script>
+  <script type="text/javascript" src="cmp/cmp-select.js"></script>
+  <script>
+    // dvc: device
+    let dvcTCodeStrSetList = []
+    // tCode (with child) list
+    let dvcList = []
+    let dvcInfoList = []
+
+    function init() {
+      makeEdit()
+    }
+
+    function makeEdit() {
+      const main = document.getElementById('id-main')
+      makeSaveBtnGroup(main)
+      makeInputTCodeBundle(main)
+      makeDvcEdit(main)
+    }
+
+    function makeSaveBtnGroup(main) {
+      const container = createContainer()
+      main.appendChild(container.border)
+      makeBtnGroup(container.content, [
+        { id: 'id-btn-print', labelTxt: 'print', onClick: () => { print() } },
+        // { id: 'id-btn-create-dvc-bundle', labelTxt: 'create dvcSrtBundleSet', onClick: () => { createDvcBundleSet() } },
+        { id: 'id-btn-save-tcode-bundle', labelTxt: 'save tCodeBundleSet', onClick: () => { saveTCode() } },
+        { id: 'id-btn-save-dvc-bundle', labelTxt: 'save dvcSrtBundleSet', onClick: () => { saveDvc() } }
+      ])
+      makeSimpleTxtDiv('id-txt-div-tcode-bundle', container.content, '')
+    }
+
+    function makeInputTCodeBundle(main) {
+      const container = createContainer()
+      main.appendChild(container.border)
+      makeSelect('id-select-type', container.content, 'type: ', 'choose bundleSet type',
+        () => {}, ['tCode', 'edit'])
+      makeInputTextBtn('id-input-remove-tcode-set', container.content,
+        'remove tCodeSet index: ', 'remove',
+        () => {
+          const index = getInputValueNumber('id-input-remove-tcode-set')
+          dvcTCodeStrSetList.splice(index, 1)
+          const tContainer = document.getElementById('id-container-tcode-set')
+          tContainer.innerHTML = ''
+          let i = 0
+          for (const tSet of dvcTCodeStrSetList) {
+            const id = `id-input-tcode-set-${i}`
+            makeInputTextBtn(id, tContainer, `[ ${i} ]: `, 'change',
+              () => {
+                dvcTCodeStrSetList[i] = getInputValue(id)
+                updateTxtDivTCodeBundle()
+              })
+            changeInputValue(id, dvcTCodeStrSetList[i])
+            i++
+          }
+          updateTxtDivTCodeBundle()
+        })
+      makeBtnGroup(container.content, [
+        {
+          id: 'id-btn-tcode-set-add', labelTxt: 'add tCodeSet',
+          onClick: () => {
+            const i = dvcTCodeStrSetList.length
+            const tContainer = document.getElementById('id-container-tcode-set')
+            const id = `id-input-tcode-set-${i}`
+            makeInputTextBtn(id, tContainer, `[ ${i} ]: `, 'change',
+              () => {
+                dvcTCodeStrSetList[i] = getInputValue(id)
+                updateTxtDivTCodeBundle()
+              })
+            dvcTCodeStrSetList.push('')
+          }
+        }
+      ])
+      const tCodeSetContainer = createContentDiv()
+      tCodeSetContainer.id = 'id-container-tcode-set'
+      container.content.appendChild(tCodeSetContainer)
+
+    }
+
+    function makeDvcEdit(main) {
+      const container = createContainer()
+      main.appendChild(container.border)
+      makeSelect('id-select-dvc-tcode', container.content, 'tCode: ', 'choose tCode',
+        () => {
+          updateDvcEdit()
+        }, dvcList)
+      makeInputTextBtn('id-input-child-order', container.content, 'child order: ', 'change',
+        () => {
+          const tCode = getInputValue('id-select-dvc-tcode')
+          const dvc = dvcInfoList.find(d => d.tCode === tCode)
+          if (dvc.child.length < 1) return
+          const str = getInputValue('id-input-child-order')
+          if (str.length < 1) return
+          const split = str.split(',')
+          const child = []
+          for (const tCode of split) {
+            const index = dvc.child.findIndex(c => c.tCode === tCode)
+            if (index < 0) continue
+            child.push(dvc.child.splice(index, 1)[0])
+          }
+          dvc.child = child.concat(dvc.child)
+          updateDvcEdit()
+        })
+      const dvcContainer = createContentDiv()
+      dvcContainer.id = 'id-container-dvc-edit'
+      container.content.appendChild(dvcContainer)
+    }
+
+    function print() {
+      console.log(dvcTCodeStrSetList)
+      console.log(dvcList)
+      console.log(dvcInfoList)
+    }
+
+    function saveTCode() {
+      if (dvcTCodeStrSetList.length < 1) return
+      const tCodeBundleSet = createDvcSrtTCodeBundleStrSet(dvcTCodeStrSetList)
+      saveString(tCodeBundleSet.split('\n')[0], tCodeBundleSet)
+    }
+
+    function saveDvc() {
+      // if (dvcTCodeStrSetList.length < 1) return
+      // const infoList = createDvcSrtInfoListByTCodeSet(dvcTCodeStrSetList)
+      // const bundleSet = createDvcSrtBundleStrSet(infoList)
+      // saveString(bundleSet.uCode, bundleSet.bundleSet)
+      if (dvcInfoList.length < 1) return
+      const bundleSet = createDvcSrtBundleStrSet(dvcInfoList)
+      saveString(bundleSet.uCode, bundleSet.bundleSet)
+    }
+
+    function createDvcBundleSet() {
+      if (dvcTCodeStrSetList.length < 1) return
+      const infoList = createDvcSrtInfoListByTCodeSet(dvcTCodeStrSetList)
+      console.log(infoList)
+    }
+
+    function updateTxtDivTCodeBundle() {
+      dvcList = []
+      const type = getInputValue('id-select-type')
+      let str = `${type}\n`
+      for (const set of dvcTCodeStrSetList) {
+        str += `${set}\n`
+        dvcList.push(set.split('/')[0])
+      }
+      changeSimpleTxtDiv('id-txt-div-tcode-bundle', str)
+      dvcInfoList = createDvcSrtInfoListByTCodeSet(dvcTCodeStrSetList)
+      for (const tCode of dvcList) {
+        const dvc = dvcInfoList.find(d => d.tCode === tCode)
+        for (const cDvc of dvc.child) {
+          cDvc.transInfo = {
+            list: [{ type: 'fit', w: 100, h: 100 }]
+          }
+        }
+      }
+      initSelect('id-select-dvc-tcode' ,dvcList)
+      updateDvcEdit()
+    }
+
+    function updateDvcEdit() {
+      const dvcContainer = document.getElementById('id-container-dvc-edit')
+      dvcContainer.innerHTML = ''
+      const tCode = getInputValue('id-select-dvc-tcode')
+      console.log(`update dvc tCode: ${tCode}`)
+
+      const dvc = dvcInfoList.find(d => d.tCode === tCode)
+      for (const cDvc of dvc.child) {
+        makeInputTextBtn(`id-input-line-ucode-${cDvc.tCode}`, dvcContainer, `[ ${cDvc.tCode} ] line uCode: `, 'change',
+          () => {
+            cDvc.lineUCode = getInputValue(`id-input-line-ucode-${cDvc.tCode}`)
+          })
+        const fitInfo = cDvc.transInfo.list.find(t => t.type === 'fit')
+        makeInputNum(`id-input-fit-w-${cDvc.tCode}`, dvcContainer, `[ ${cDvc.tCode} ] fit w: `, fitInfo.w,
+          () => {
+            fitInfo.w = getInputValueNumber(`id-input-fit-w-${cDvc.tCode}`)
+          })
+        makeInputNum(`id-input-fit-h-${cDvc.tCode}`, dvcContainer, `[ ${cDvc.tCode} ] fit h: `, fitInfo.h,
+          () => {
+            fitInfo.h = getInputValueNumber(`id-input-fit-h-${cDvc.tCode}`)
+          })
+
+        const jrcList = cDvc.jrcInfo.list
+        for (const jrc of jrcList) {
+          makeInputNum(`id-input-${jrc.target}-${jrc.key}-jrc-x`, dvcContainer, `${jrc.key}-${jrc.jrcType}-x: `, jrc.x,
+            () => {
+              jrc.x = getInputValueNumber(`id-input-${jrc.target}-${jrc.key}-jrc-x`)
+            })
+          makeInputNum(`id-input-${jrc.target}-${jrc.key}-jrc-y`, dvcContainer, `${jrc.key}-${jrc.jrcType}-y: `, jrc.y,
+            () => {
+              jrc.y = getInputValueNumber(`id-input-${jrc.target}-${jrc.key}-jrc-y`)
+            })
+          makeInputNumBtn(`id-input-${jrc.target}-${jrc.key}-jrc-scx`, dvcContainer, `scx: `, 'change',
+            () => {
+              const w = getInputValueNumber(`id-input-fit-w-${cDvc.tCode}`)
+              if (w > 0) {
+                const scx = getInputValueNumber(`id-input-${jrc.target}-${jrc.key}-jrc-scx`)
+                changeInputValue(`id-input-${jrc.target}-${jrc.key}-jrc-x`, w * scx)
+                jrc.x = getInputValueNumber(`id-input-${jrc.target}-${jrc.key}-jrc-x`)
+              }
+            }, 1)
+          makeInputNumBtn(`id-input-${jrc.target}-${jrc.key}-jrc-scy`, dvcContainer, `scy: `, 'change',
+            () => {
+              const h = getInputValueNumber(`id-input-fit-h-${cDvc.tCode}`)
+              if (h > 0) {
+                const scy = getInputValueNumber(`id-input-${jrc.target}-${jrc.key}-jrc-scy`)
+                changeInputValue(`id-input-${jrc.target}-${jrc.key}-jrc-y`, h * scy)
+                jrc.y = getInputValueNumber(`id-input-${jrc.target}-${jrc.key}-jrc-y`)
+              }
+            }, 1)
+        }
+
+        makeBtnGroup(dvcContainer, [
+          { id: `id-btn-change-dvc-${cDvc.tCode}`, labelTxt: `${cDvc.tCode} change`,
+            onClick: () => {
+
+            } }
+        ])
+      }
+    }
+  </script>
+</body>
+</html>

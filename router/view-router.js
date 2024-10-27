@@ -74,6 +74,10 @@ router.get('/dvc-srt-bundle-list', (req, res) => {
   res.render('dvc-srt-bundle-list.html')
 })
 
+router.get('/making-dvc-tcode-bundle', (req, res) => {
+  res.render('making-dvc-tcode-bundle.html')
+})
+
 router.get('/making-dvc-srt-bundle', (req, res) => {
   res.render('making-dvc-srt-bundle.html')
 })
