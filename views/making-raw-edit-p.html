@@ -151,6 +151,7 @@
       const container = createContainer()
       container.content.innerText = 'edit pSet info'
       menu.appendChild(container.border)
+      makeSimpleTxtDiv('id-txt-div-line-size', container.content, '')
       makeInputText('id-input-change-raw-ucode', container.content, 'raw uCode: ')
       makeInputNum('id-input-szw', container.content, 'szw: ', szw,
         () => { szw = getInputValueNumber('id-input-szw') })
@@ -279,6 +280,7 @@
         lineInfo: null
       }
       makeLine(placeInfo, rawSetList)
+      changeSimpleTxtDiv('id-txt-div-line-size', `lineInfo w: ${placeInfo.lineInfo.w}, h: ${placeInfo.lineInfo.h}`)
       updateCrnt()
     }
 
@@ -328,6 +330,7 @@
       }
 
       makeLine(placeInfo, rawSetList)
+      changeSimpleTxtDiv('id-txt-div-line-size', `lineInfo w: ${placeInfo.lineInfo.w}, h: ${placeInfo.lineInfo.h}`)
       draw()
     }
 
