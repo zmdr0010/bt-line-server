@@ -254,3 +254,64 @@ function multiplyMatrixAndPoint3(m, p) {
   const rz = x * c2r0 + y * c2r1 + z * c2r2
   return [rx, ry, rz]
 }
+
+// line: linePointInfo
+// pInfo: {
+//    lt: {x: 0, y: 0}, rt: {x: 1, y: 0},
+//    lb: {x: 0, y: 1}, rb: {x: 1, y: 1}
+//  }
+function transformPoints4V1(line, pInfo) {
+  const x0 = pInfo.lt.x
+  const y0 = pInfo.lt.y
+  const x1 = pInfo.rt.x
+  const y1 = pInfo.rt.y
+  const x2 = pInfo.rb.x
+  const y2 = pInfo.rb.y
+  const x3 = pInfo.lb.x
+  const y3 = pInfo.lb.y
+
+  const dx1 = x1 - x2
+  const dx2 = x3 - x2
+  const dx3 = x0 - x1 + x2 - x3
+  const dy1 = y1 - y2
+  const dy2 = y3 - y2
+  const dy3 = y0 - y1 + y2 - y3
+
+  const a13 = (dx3 * dy2 - dy3 * dx2) / (dx1 * dy2 - dy1 * dx2)
+  const a23 = (dx1 * dy3 - dy1 * dx3) / (dx1 * dy2 - dy1 * dx2)
+  const a11 = x1 - x0 + a13 * x1
+  const a21 = x3 - x0 + a23 * x3
+  const a31 = x0
+  const a12 = y1 - y0 + a13 * y1
+  const a22 = y3 - y0 + a23 * y3
+  const a32 = y0
+
+  const m = [
+    a11, a12, a13,
+    a21, a22, a23,
+    a31, a32, 1
+  ]
+
+  const pList = line.pointInfo.list
+  const rpList = []
+  for (const p of pList) {
+    const scx = p.x / line.w
+    const scy = p.y / line.h
+    const rm = multiplyMatrixAndPoint3(m, [scx, scy, 1])
+
+    const x = rm[0] / rm[2]
+    const y = rm[1] / rm[2]
+
+    rpList.push({ x: x, y: y})
+  }
+
+  const rLine = structuredClone(line)
+  for (let i=0; i<rpList.length; i++) {
+    const p = rLine.pointInfo.list[i]
+    const ep = rpList[i]
+    p.x = ep.x
+    p.y = ep.y
+  }
+
+  return rLine
+}

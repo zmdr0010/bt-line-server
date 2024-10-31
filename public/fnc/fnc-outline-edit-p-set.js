@@ -156,6 +156,36 @@ function makeLine(placeInfo, rawSetList) {
   placeInfo.lineInfo = line
 }
 
+function makeLineByRawInfo(placeInfo, rawInfo) {
+  const szw = placeInfo.pSetInfo.szw
+  const szh = placeInfo.pSetInfo.szh
+  const color = placeInfo.pSetInfo.color
+  const lineColor = placeInfo.pSetInfo.lineColor
+  const lineWidth = placeInfo.pSetInfo.lineWidth
+  const editType = placeInfo.pSetInfo.editType
+  const iList = placeInfo.pSetInfo.iList
+  const edgeList = placeInfo.pSetInfo.edgeTypeList
+  const pList = calculatePList(rawInfo)
+  const linePList = []
+  placeInfo.pSetInfo.rawUCode = rawInfo.uCode
+  makeLinePList(pList[0], linePList, szw, szh)
+  let line = createLinePointFromOutlinePList(linePList, color, lineColor, lineWidth)
+
+  if (editType === 'remove-p' && iList.length > 0) {
+    const editList = editOutPInfoList(linePList, szw, szh, iList, editType)
+    line = createLinePointFromOutlinePList(editList, color, lineColor, lineWidth)
+  }
+
+  if (editType !== 'none' && editType !== 'remove-p' && edgeList.length > 0) {
+    const editList = editPListEdgeInOutSide(linePList, szw, szh, 'target', editType, { iList: [], list: edgeList })
+    line = createLinePointFromOutlinePList(editList, color, lineColor, lineWidth)
+  }
+
+  line.x = placeInfo.x
+  line.y = placeInfo.y
+  placeInfo.lineInfo = line
+}
+
 function createEmptyPlaceInfo() {
   return {
     x: 0,

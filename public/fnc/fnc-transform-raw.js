@@ -374,3 +374,27 @@ function changeShapeRaw(iList, iRow, iColumn, iSr, iSc, info) {
     raw: sRaw
   }
 }
+
+// reInfo: replace rawInfo
+// sc, sr: start c, r of reInfo on info,
+// info: target rawInfo
+function replaceShapeRaw(reInfo, sc, sr, info) {
+  const rRaw = structuredClone(info.raw)
+  for (let i=0; i<reInfo.raw.length; i++) {
+    const rw = reInfo.raw [i]
+    const reC = i % reInfo.column
+    const reR = Math.floor(i / reInfo.column)
+    const c = reC + sc
+    const r = reR + sr
+    if (c >= info.column || r >= info.row) continue
+    const index = r * info.column + c
+    rRaw[index] = rw
+  }
+  return {
+    uCode: `raw-${getCurrentDateUCode()}`,
+    column: info.column,
+    row: info.row,
+    rawNum: info.rawNum,
+     raw: rRaw
+  }
+}

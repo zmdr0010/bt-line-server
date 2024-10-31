@@ -11,6 +11,7 @@ let dbPath = ''
 //       dvc-srt(device-structure), dvc-srt-bundle, dvc-set
 //       raw-set, place-raw-set, edit-p-set, place-edit-p-set
 //       color-set, color-palette
+//       line-edit
 
 //// making-line-point / coloring-line-point
 ////    line-point, coloring(1, black) (memo0: line-point) -> line (memo0: line-point,line-point uCode) <- record origin
@@ -197,6 +198,11 @@ function getColorPaletteList(callback) {
   getSetListByType('color-palette', callback)
 }
 exports.getColorPaletteList = getColorPaletteList
+
+function getLineEditList(callback) {
+  getSetListByType('line-edit', callback)
+}
+exports.getLineEditList = getLineEditList
 
 function getSetListByType(type, callback) {
   const info = {

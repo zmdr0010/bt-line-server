@@ -116,6 +116,7 @@ function createDvcSrtStrSet(info) {
   result += `/${transNum}`
   for (let i=0; i<transNum; i++) {
     const trans = info.transInfo.list[i]
+    if (trans.type === 'fit') result += `/${trans.type},${trans.w},${trans.h}`
     if (trans.type === 'scale') result += `/${trans.type},${trans.scaleX},${trans.scaleY}`
     if (trans.type === 'rotate') result += `/${trans.type},${trans.degree}`
     if (trans.type === 'sftRI') result += `/${trans.type},${trans.ri}`
@@ -189,6 +190,9 @@ function createDvcSrtInfo(set, infoList) {
     for (let i=start; i<next; i++) {
       const trnStr = split[i]
       const trnSplit = trnStr.split(',')
+      if (trnSplit[0] === 'fit') result.transInfo.list.push({
+        type: trnSplit[0], w: Number(trnSplit[1]), h: Number(trnSplit[2])
+      })
       if (trnSplit[0] === 'scale') result.transInfo.list.push({
         type: trnSplit[0], scaleX: Number(trnSplit[1]), scaleY: Number(trnSplit[2])
       })

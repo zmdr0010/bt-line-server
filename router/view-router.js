@@ -118,6 +118,10 @@ router.get('/transform-line', (req, res) => {
   res.render('transform-line.html')
 })
 
+router.get('/transform-line-edit-list', (req, res) => {
+  res.render('transform-line-edit-list.html')
+})
+
 router.get('/making-raw-edit-p', (req, res) => {
   res.render('making-raw-edit-p')
 })

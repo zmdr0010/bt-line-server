@@ -164,11 +164,18 @@ function createDvcPart(info, lineSetList) {
     if (lineSet) {
       const line = createSimpleLineInfo(lineSet)
       part.lineInfo = createLinePointFromLineInfo(line)
-      console.log(part)
     }
   }
   if (info.transInfo) {
     for (const tr of info.transInfo.list) {
+      if (tr.type === 'fit') {
+        if (part.lineInfo) {
+          const scx = tr.w / part.lineInfo.w
+          const scy = tr.h / part.lineInfo.h
+          part.lineInfo = createScaledLineInfo(part.lineInfo, scx, scy)
+          part.lineInfo = createLinePointFromLineInfo(part.lineInfo)
+        }
+      }
       if (tr.type === 'scale') {
         if (part.lineInfo) {
           part.lineInfo = createScaledLineInfo(part.lineInfo, tr.scaleX, tr.scaleY)

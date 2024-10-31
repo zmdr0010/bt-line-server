@@ -165,4 +165,10 @@ router.get('/color-palette-list', (req, res) => {
   })
 })
 
+router.get('/line-edit-list', (req, res) => {
+  strSetManager.getLineEditList((result) => {
+    res.json(result)
+  })
+})
+
 exports.router = router

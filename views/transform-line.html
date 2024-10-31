@@ -41,6 +41,7 @@
 
   <script type="text/javascript" src="fnc/fnc-draw.js"></script>
   <script type="text/javascript" src="fnc/fnc-line-info.js"></script>
+  <script type="text/javascript" src="fnc/fnc-line-edit-info.js"></script>
   <script type="text/javascript" src="fnc/fnc-transform-line-info.js"></script>
   <script type="text/javascript" src="fnc/fnc-save.js"></script>
   <script type="text/javascript" src="cmp/cmp-common.js"></script>
@@ -49,6 +50,7 @@
   <script type="text/javascript" src="cmp/cmp-btn.js"></script>
   <script>
     let lineSetList = []
+    let lineEditSetList = []
 
     let canvas
     let ctx
@@ -57,39 +59,37 @@
     let sy = 50
 
     let editInfo = {
+      uCode: `line-edit-${getCurrentDateUCode()}`,
       lineInfo: null,
       transLine: null,
       scaleInfo: {
-        isNew: false,
         scaleX: 1,
         scaleY: 1
       },
       rotateInfo: {
-        isNew: false,
         degree: 0
       },
       sftRIInfo: {
-        isNew: false,
         i: 0,
         list: [0,1,2,3,4,5,6,7]
       },
       p4Info: {
-        isNew: false,
+        isOn: false,
         lt: {
-          scx: 0,
-          scy: 0
+          x: 0,
+          y: 0
         },
         rt: {
-          scx: 1,
-          scy: 0
+          x: 100,
+          y: 0
         },
         lb: {
-          scx: 0,
-          scy: 1
+          x: 0,
+          y: 100
         },
         rb: {
-          scx: 1,
-          scy: 1
+          x: 100,
+          y: 100
         }
       }
     }
@@ -110,6 +110,19 @@
           for (const str of json.list) {
             lineSetList.push(str)
           }
+          loadLineEditList()
+        }
+      })
+    }
+
+    function loadLineEditList() {
+      const request = new Request('/str-set/line-edit-list')
+      fetch(request).then((response) => response.json()).then((json) => {
+        console.log(json)
+        if (json.code === 'list') {
+          for (const str of json.list) {
+            lineEditSetList.push(str)
+          }
           makeMenu()
         }
       })
@@ -119,15 +132,39 @@
       const menu = document.getElementById('id-menu')
       makeInputUCode(menu)
       makeEditStartPos(menu)
-      makeEditScale(menu)
-      makeEditRotate(menu)
-      makeEditShiftRotateI(menu)
+      makeTransformEdit(menu)
       makeEditP4(menu)
     }
 
     function makeInputUCode(menu) {
       const container = createContainer()
       menu.appendChild(container.border)
+      makeInputTextBtn('id-input-line-edit-ucode', container.content, 'edit uCode: ', 'load',
+        () => {
+          const uCode = getInputValue('id-input-line-edit-ucode')
+          const set = lineEditSetList.find(s => s.split('/')[0] === uCode)
+          editInfo = createLineEditInfo(set, lineSetList)
+          console.log(editInfo)
+          changeInputValue('id-select-sft-ri', editInfo.sftRIInfo.i)
+          changeInputValue('id-input-scale-x', editInfo.scaleInfo.scaleX)
+          changeInputValue('id-input-scale-y', editInfo.scaleInfo.scaleY)
+          changeInputValue('id-input-degree', editInfo.rotateInfo.degree)
+          setChecked('id-checkbox-p4-is-on', editInfo.p4Info.isOn)
+          if (editInfo.p4Info.isOn) {
+            changeInputValue('id-input-p4-lt-x', editInfo.p4Info.lt.x)
+            changeInputValue('id-input-p4-lt-y', editInfo.p4Info.lt.y)
+            changeInputValue('id-input-p4-rt-x', editInfo.p4Info.rt.x)
+            changeInputValue('id-input-p4-rt-y', editInfo.p4Info.rt.y)
+            changeInputValue('id-input-p4-rb-x', editInfo.p4Info.rb.x)
+            changeInputValue('id-input-p4-rb-y', editInfo.p4Info.rb.y)
+            changeInputValue('id-input-p4-lb-x', editInfo.p4Info.lb.x)
+            changeInputValue('id-input-p4-lb-y', editInfo.p4Info.lb.y)
+          } else {
+            calculateP4()
+          }
+          editByOrder(editInfo)
+          draw()
+        })
       makeInputTextBtn('id-input-line-ucode', container.content, 'line uCode: ', 'load',
         () => { loadLine() })
       makeBtnGroup(container.content, [
@@ -137,7 +174,8 @@
             draw()
           } },
         { id: 'id-btn-print', labelTxt: 'print', onClick: print },
-        { id: 'id-btn-save', labelTxt: 'save', onClick: save }
+        { id: 'id-btn-save', labelTxt: 'save', onClick: save },
+        { id: 'id-btn-save', labelTxt: 'save to line', onClick: saveToLine }
       ])
       makeSimpleTxtDiv('id-txt-div-result', container.content, '')
     }
@@ -157,62 +195,45 @@
         })
     }
 
-    function makeEditScale(menu) {
+    function makeTransformEdit(menu) {
       const container = createContainer()
       menu.appendChild(container.border)
-      makeInputCheckBox(container.content, 'id-checkbox-scale-is-new', 'isNew: ', false,
-        () => { editInfo.scaleInfo.isNew = getChecked('id-checkbox-scale-is-new') })
+      makeInputCheckBox(container.content, 'id-check-is-auto-transform', 'isAutoTransform: ', false, () => {})
+      makeSelect('id-select-sft-ri', container.content, 'sftRI: ', 'choose sftRI',
+        () => {
+          editInfo.sftRIInfo.i = getInputValueNumber('id-select-sft-ri')
+          if (getChecked('id-check-is-auto-transform')) {
+            editByOrder(editInfo)
+            draw()
+          }
+        }, editInfo.sftRIInfo.list)
       makeInputNum('id-input-scale-x', container.content, 'scaleX: ', 1,
         () => {
           editInfo.scaleInfo.scaleX = getInputValueNumber('id-input-scale-x')
+          if (getChecked('id-check-is-auto-transform')) {
+            editByOrder(editInfo)
+            draw()
+          }
         }, 0.01)
       makeInputNum('id-input-scale-y', container.content, 'scaleY: ', 1,
         () => {
           editInfo.scaleInfo.scaleY = getInputValueNumber('id-input-scale-y')
+          if (getChecked('id-check-is-auto-transform')) {
+            editByOrder(editInfo)
+            draw()
+          }
         }, 0.01)
-      makeBtnGroup(container.content, [ { id: 'id-btn-change-scale', labelTxt: 'change scale',
-        onClick: () => {
-          if (editInfo.scaleInfo.scaleX === 1 && editInfo.scaleInfo.scaleY === 1) return
-          let lineInfo = editInfo.lineInfo
-          if (!editInfo.scaleInfo.isNew && editInfo.transLine) lineInfo = editInfo.transLine
-          editInfo.transLine = createScaledLineInfo(lineInfo, editInfo.scaleInfo.scaleX, editInfo.scaleInfo.scaleY)
-          draw()
-        } } ])
-    }
-
-    function makeEditRotate(menu) {
-      const container = createContainer()
-      menu.appendChild(container.border)
-      makeInputCheckBox(container.content, 'id-checkbox-rotate-is-new', 'isNew: ', false,
-        () => { editInfo.rotateInfo.isNew = getChecked('id-checkbox-rotate-is-new') })
       makeInputNum('id-input-degree', container.content, 'degree: ', 0,
         () => {
           editInfo.rotateInfo.degree = getInputValueNumber('id-input-degree')
+          if (getChecked('id-check-is-auto-transform')) {
+            editByOrder(editInfo)
+            draw()
+          }
         })
-      makeBtnGroup(container.content, [ { id: 'id-btn-change-rotate', labelTxt: 'change rotate',
+      makeBtnGroup(container.content, [ { id: 'id-btn-transform', labelTxt: 'transform',
         onClick: () => {
-          if (editInfo.rotateInfo.degree === 0) return
-          let lineInfo = editInfo.lineInfo
-          if (!editInfo.rotateInfo.isNew && editInfo.transLine) lineInfo = editInfo.transLine
-          editInfo.transLine = createRotateLineInfo(lineInfo, degreeToRadian(editInfo.rotateInfo.degree))
-          fitSimpleLineInfo(editInfo.transLine)
-          draw()
-        } } ])
-    }
-
-    function makeEditShiftRotateI(menu) {
-      const container = createContainer()
-      menu.appendChild(container.border)
-      makeInputCheckBox(container.content, 'id-checkbox-sft-ri-is-new', 'isNew: ', false,
-        () => { editInfo.sftRIInfo.isNew = getChecked('id-checkbox-sft-ri-is-new') })
-      makeSelect('id-select-sft-ri', container.content, 'sftRI: ', 'choose sftRI',
-        () => { editInfo.sftRIInfo.i = getInputValueNumber('id-select-sft-ri') }, editInfo.sftRIInfo.list)
-      makeBtnGroup(container.content, [ { id: 'id-btn-change-sft-ri', labelTxt: 'change sftRI',
-        onClick: () => {
-          if (editInfo.sftRIInfo.i === 0) return
-          let lineInfo = editInfo.lineInfo
-          if (!editInfo.sftRIInfo.isNew && editInfo.transLine) lineInfo = editInfo.transLine
-          editInfo.transLine = createShiftRotateILineInfo(lineInfo, editInfo.sftRIInfo.i)
+          editByOrder(editInfo)
           draw()
         } } ])
     }
@@ -220,119 +241,101 @@
     function makeEditP4(menu) {
       const container = createContainer()
       menu.appendChild(container.border)
-      makeInputCheckBox(container.content, 'id-checkbox-p4-is-new', 'isNew: ', false,
-        () => { editInfo.p4Info.isNew = getChecked('id-checkbox-p4-is-new') })
       makeInputCheckBox(container.content, 'id-checkbox-p4-is-drawing', 'isDrawing: ', isDrawingP4,
         () => {
           isDrawingP4 = getChecked('id-checkbox-p4-is-drawing')
           draw()
         })
-      makeInputNum('id-input-p4-lt-scx', container.content, 'lt.scx: ', editInfo.p4Info.lt.scx,
+      makeInputCheckBox(container.content, 'id-checkbox-p4-is-on', 'isOn: ', false,
         () => {
-          editInfo.p4Info.lt.scx = getInputValueNumber('id-input-p4-lt-scx')
-          // if (!editInfo.p4Info.isNew) editingP4()
-          if (isDrawingP4) draw()
-        }, 0.01)
-      makeInputNum('id-input-p4-lt-scy', container.content, 'lt.scy: ', editInfo.p4Info.lt.scy,
+          editInfo.p4Info.isOn = getChecked('id-checkbox-p4-is-on')
+          draw()
+        })
+      makeInputNum('id-input-p4-lt-x', container.content, 'lt.x: ', editInfo.p4Info.lt.x,
         () => {
-          editInfo.p4Info.lt.scy = getInputValueNumber('id-input-p4-lt-scy')
+          editInfo.p4Info.lt.x = getInputValueNumber('id-input-p4-lt-x')
           // if (!editInfo.p4Info.isNew) editingP4()
-          if (isDrawingP4) draw()
-        }, 0.01)
-      makeInputNum('id-input-p4-rt-scx', container.content, 'rt.scx: ', editInfo.p4Info.rt.scx,
+          if (editInfo.p4Info.isOn) draw()
+        }, 1)
+      makeInputNum('id-input-p4-lt-y', container.content, 'lt.y: ', editInfo.p4Info.lt.y,
         () => {
-          editInfo.p4Info.rt.scx = getInputValueNumber('id-input-p4-rt-scx')
+          editInfo.p4Info.lt.y = getInputValueNumber('id-input-p4-lt-y')
           // if (!editInfo.p4Info.isNew) editingP4()
-          if (isDrawingP4) draw()
-        }, 0.01)
-      makeInputNum('id-input-p4-rt-scy', container.content, 'rt.scy: ', editInfo.p4Info.rt.scy,
+          if (editInfo.p4Info.isOn) draw()
+        }, 1)
+      makeInputNum('id-input-p4-rt-x', container.content, 'rt.x: ', editInfo.p4Info.rt.x,
         () => {
-          editInfo.p4Info.rt.scy = getInputValueNumber('id-input-p4-rt-scy')
+          editInfo.p4Info.rt.x = getInputValueNumber('id-input-p4-rt-x')
           // if (!editInfo.p4Info.isNew) editingP4()
-          if (isDrawingP4) draw()
-        }, 0.01)
-      makeInputNum('id-input-p4-lb-scx', container.content, 'lb.scx: ', editInfo.p4Info.lb.scx,
+          if (editInfo.p4Info.isOn) draw()
+        }, 1)
+      makeInputNum('id-input-p4-rt-y', container.content, 'rt.y: ', editInfo.p4Info.rt.y,
         () => {
-          editInfo.p4Info.lb.scx = getInputValueNumber('id-input-p4-lb-scx')
+          editInfo.p4Info.rt.y = getInputValueNumber('id-input-p4-rt-y')
           // if (!editInfo.p4Info.isNew) editingP4()
-          if (isDrawingP4) draw()
-        }, 0.01)
-      makeInputNum('id-input-p4-lb-scy', container.content, 'lb.scy: ', editInfo.p4Info.lb.scy,
+          if (editInfo.p4Info.isOn) draw()
+        }, 1)
+      makeInputNum('id-input-p4-lb-x', container.content, 'lb.x: ', editInfo.p4Info.lb.x,
         () => {
-          editInfo.p4Info.lb.scy = getInputValueNumber('id-input-p4-lb-scy')
+          editInfo.p4Info.lb.x = getInputValueNumber('id-input-p4-lb-x')
           // if (!editInfo.p4Info.isNew) editingP4()
-          if (isDrawingP4) draw()
-        }, 0.01)
-      makeInputNum('id-input-p4-rb-scx', container.content, 'rb.scx: ', editInfo.p4Info.rb.scx,
+          if (editInfo.p4Info.isOn) draw()
+        }, 1)
+      makeInputNum('id-input-p4-lb-y', container.content, 'lb.y: ', editInfo.p4Info.lb.y,
         () => {
-          editInfo.p4Info.rb.scx = getInputValueNumber('id-input-p4-rb-scx')
+          editInfo.p4Info.lb.y = getInputValueNumber('id-input-p4-lb-y')
           // if (!editInfo.p4Info.isNew) editingP4()
-          if (isDrawingP4) draw()
-        }, 0.01)
-      makeInputNum('id-input-p4-rb-scy', container.content, 'rb.scy: ', editInfo.p4Info.rb.scy,
+          if (editInfo.p4Info.isOn) draw()
+        }, 1)
+      makeInputNum('id-input-p4-rb-x', container.content, 'rb.x: ', editInfo.p4Info.rb.x,
         () => {
-          editInfo.p4Info.rb.scy = getInputValueNumber('id-input-p4-rb-scy')
+          editInfo.p4Info.rb.x = getInputValueNumber('id-input-p4-rb-x')
           // if (!editInfo.p4Info.isNew) editingP4()
-          if (isDrawingP4) draw()
-        }, 0.01)
+          if (editInfo.p4Info.isOn) draw()
+        }, 1)
+      makeInputNum('id-input-p4-rb-y', container.content, 'rb.y: ', editInfo.p4Info.rb.y,
+        () => {
+          editInfo.p4Info.rb.y = getInputValueNumber('id-input-p4-rb-y')
+          // if (!editInfo.p4Info.isNew) editingP4()
+          if (editInfo.p4Info.isOn) draw()
+        }, 1)
       makeBtnGroup(container.content, [
         {
-          id: 'id-btn-change-p4', labelTxt: 'change p4',
+          id: 'id-btn-calc-p4', labelTxt: 'calculate p4',
           onClick: () => {
-            editingP4()
-          }
-        },
-        {
-          id: 'id-btn-draw-p4', labelTxt: 'draw',
-          onClick: () => {
-            draw()
-          }
-        },
-        {
-          id: 'id-btn-reset-p4', labelTxt: 'reset',
-          onClick: () => {
-            editInfo.p4Info.lt.scx = 0
-            editInfo.p4Info.lt.scy = 0
-            editInfo.p4Info.rt.scx = 1
-            editInfo.p4Info.rt.scy = 0
-            editInfo.p4Info.lb.scx = 0
-            editInfo.p4Info.lb.scy = 1
-            editInfo.p4Info.rb.scx = 1
-            editInfo.p4Info.rb.scy = 1
-            changeInputValue('id-input-p4-lt-scx', 0)
-            changeInputValue('id-input-p4-lt-scy', 0)
-            changeInputValue('id-input-p4-rt-scx', 1)
-            changeInputValue('id-input-p4-rt-scy', 0)
-            changeInputValue('id-input-p4-lb-scx', 0)
-            changeInputValue('id-input-p4-lb-scy', 1)
-            changeInputValue('id-input-p4-rb-scx', 1)
-            changeInputValue('id-input-p4-rb-scy', 1)
-            if (isDrawingP4) draw()
+            calculateP4()
+            if (editInfo.p4Info.isOn) draw()
           }
         }
       ])
     }
 
-    function editingP4() {
+    function calculateP4() {
       let lineInfo = editInfo.lineInfo
-      if (!editInfo.p4Info.isNew && editInfo.transLine) lineInfo = editInfo.transLine
-      lineInfo = createLinePointFromLineInfo(lineInfo)
-      const pList = transformPoints4(lineInfo.pointInfo.list, lineInfo.w, lineInfo.h, editInfo.p4Info)
-      for (let i=0; i<pList.length; i++) {
-        const p = pList[i]
-        const pp = lineInfo.pointInfo.list[i]
-        pp.x = p.x
-        pp.y = p.y
-      }
-      fitSimpleLineInfo(lineInfo)
-      editInfo.transLine = lineInfo
-      draw()
+      if (editInfo.transLine) lineInfo = editInfo.transLine
+      editInfo.p4Info.lt.x = 0
+      editInfo.p4Info.lt.y = 0
+      editInfo.p4Info.rt.x = lineInfo.w
+      editInfo.p4Info.rt.y = 0
+      editInfo.p4Info.rb.x = lineInfo.w
+      editInfo.p4Info.rb.y = lineInfo.h
+      editInfo.p4Info.lb.x = 0
+      editInfo.p4Info.lb.y = lineInfo.h
+      changeInputValue('id-input-p4-lt-x', editInfo.p4Info.lt.x)
+      changeInputValue('id-input-p4-lt-y', editInfo.p4Info.lt.y)
+      changeInputValue('id-input-p4-rt-x', editInfo.p4Info.rt.x)
+      changeInputValue('id-input-p4-rt-y', editInfo.p4Info.rt.y)
+      changeInputValue('id-input-p4-rb-x', editInfo.p4Info.rb.x)
+      changeInputValue('id-input-p4-rb-y', editInfo.p4Info.rb.y)
+      changeInputValue('id-input-p4-lb-x', editInfo.p4Info.lb.x)
+      changeInputValue('id-input-p4-lb-y', editInfo.p4Info.lb.y)
     }
 
     function loadLine() {
       const uCode = getInputValue('id-input-line-ucode')
       const set = lineSetList.find(s => s.split('/')[0] === uCode)
       editInfo.lineInfo = createSimpleLineInfo(set)
+      calculateP4()
       draw()
     }
 
@@ -340,21 +343,27 @@
       ctx.clearRect(0, 0, canvas.width, canvas.height)
 
       let drawingLine = editInfo.lineInfo
-      if (editInfo.transLine) {
-        drawingLine = editInfo.transLine
-        drawLineInfo(ctx, editInfo.transLine, sx, sy)
+      if (editInfo.transLine) drawingLine = editInfo.transLine
+
+      if (!drawingLine) return
+
+      if (drawingLine && editInfo.p4Info.isOn) {
+        const pLine = createLinePointFromLineInfo(drawingLine)
+        const line = transformPoints4V1(pLine, editInfo.p4Info)
+        drawLineInfo(ctx, line, sx, sy)
       } else {
-        if (editInfo.lineInfo) drawLineInfo(ctx, editInfo.lineInfo, sx, sy)
+        drawLineInfo(ctx, drawingLine, sx, sy)
       }
-      if (drawingLine && isDrawingP4) {
-        const ltX = drawingLine.w * editInfo.p4Info.lt.scx + sx
-        const ltY = drawingLine.h * editInfo.p4Info.lt.scy + sy
-        const rtX = drawingLine.w * editInfo.p4Info.rt.scx + sx
-        const rtY = drawingLine.h * editInfo.p4Info.rt.scy + sy
-        const lbX = drawingLine.w * editInfo.p4Info.lb.scx + sx
-        const lbY = drawingLine.h * editInfo.p4Info.lb.scy + sy
-        const rbX = drawingLine.w * editInfo.p4Info.rb.scx + sx
-        const rbY = drawingLine.h * editInfo.p4Info.rb.scy + sy
+
+      if (isDrawingP4) {
+        const ltX = editInfo.p4Info.lt.x + sx
+        const ltY = editInfo.p4Info.lt.y + sy
+        const rtX = editInfo.p4Info.rt.x + sx
+        const rtY = editInfo.p4Info.rt.y + sy
+        const lbX = editInfo.p4Info.lb.x + sx
+        const lbY = editInfo.p4Info.lb.y + sy
+        const rbX = editInfo.p4Info.rb.x + sx
+        const rbY = editInfo.p4Info.rb.y + sy
         ctx.beginPath()
         ctx.lineWidth = 1
         ctx.strokeStyle = 'red'
@@ -373,11 +382,40 @@
 
     function save() {
       if (!editInfo.transLine) return
-      const set = createSimpleLineStrSet(editInfo.transLine)
-      saveString(editInfo.transLine.uCode, set)
+      editInfo.uCode = `line-edit-${getCurrentDateUCode()}`
+      const set = createLineEditStrSet(editInfo, editInfo.p4Info.isOn)
+      saveString(editInfo.uCode, set)
 
       const obj = {
-        uCode: editInfo.transLine.uCode,
+        uCode: editInfo.uCode,
+        str: set,
+        type: 'line-edit',
+        dsg: '',
+        memo0: '',
+        memo1: '',
+        memo2: '',
+      }
+      postAddStr(obj)
+    }
+
+    function saveToLine() {
+      if (!editInfo.transLine) return
+      let set
+      let uCode = editInfo.transLine.uCode
+      if (editInfo.p4Info.isOn) {
+        const pLine = createLinePointFromLineInfo(editInfo.transLine)
+        const line = transformPoints4V1(pLine, editInfo.p4Info)
+        fitSimpleLineInfo(line)
+        line.uCode = `line-${getCurrentDateUCode()}`
+        uCode = line.uCode
+        set = createSimpleLineStrSet(line)
+      } else {
+        set = createSimpleLineStrSet(editInfo.transLine)
+      }
+      saveString(uCode, set)
+
+      const obj = {
+        uCode: uCode,
         str: set,
         type: 'line',
         dsg: '',
@@ -385,7 +423,10 @@
         memo1: '',
         memo2: '',
       }
+      postAddStr(obj)
+    }
 
+    function postAddStr(obj) {
       const request = new Request('/str-set/add-str', {
         headers: { 'Content-Type': 'application/json' },
         method: 'POST', body: JSON.stringify(obj)

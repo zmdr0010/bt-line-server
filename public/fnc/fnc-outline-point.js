@@ -102,3 +102,51 @@ function editOutPInfoList(pList, szw, szh, iList, editType='remove-p') {
   list.push({ x: first.x, y: first.y })
   return list
 }
+
+// pI0, pI1: pList[pI0] -> p0, [pI1] -> p1 (line): remove p in p0-p1
+// editInfo: { type: '', ... ect values by type }
+function changeLineInPList(pList, pI0, pI1, editInfo) {
+  const opList = pList.slice(0, pList.length-1)
+  let list = []
+
+  const p0 = opList[pI0]
+  const p1 = opList[pI1]
+  // list.push({ x: p0.x, y: p0.y })
+  // list.push({ x: p1.x, y: p1.y })
+  if (pI0 < pI1) {
+    let i = 0
+    for (const p of opList) {
+      if (i >= pI0 && i <= pI1) {
+        if (i === pI0) {
+          list.push({ x: p0.x, y: p0.y })
+        } else if (i === pI1) {
+          list.push({ x: p1.x, y: p1.y })
+        } else {
+          // if (editInfo.type === 'slice') {
+          //
+          // }
+          if (editInfo.type === 'curve') {
+            const curves = createPListCurve(p0, p1, editInfo.cp, editInfo.interval)
+            list = list.concat(curves.slice(1, curves.length-2))
+          }
+        }
+      } else {
+        list.push({ x: p.x, y: p.y })
+      }
+      i++
+    }
+  } else { // ex. length 10: 8,9,0,1,2
+    for (let i=pI1; i<=pI0; i++) {
+      const p = opList[i]
+      list.push({ x: p.x, y: p.y })
+    }
+    if (editInfo.type === 'curve') {
+      const curves = createPListCurve(p0, p1, editInfo.cp, editInfo.interval)
+      list = list.concat(curves.slice(1, curves.length-2))
+    }
+  }
+
+  const first = list[0]
+  list.push({ x: first.x, y: first.y })
+  return list
+}
