@@ -244,6 +244,15 @@
           rawEdit.expandInfo.sn = getInputValueNumber('id-input-expand-sn')
 
           if (rawEdit.expandInfo.sn > 1) {
+            if (rawEdit.expandInfo.isFit) {
+              const szw = rawEdit.szw / rawEdit.expandInfo.sn
+              const szh = rawEdit.szh / rawEdit.expandInfo.sn
+              rawEdit.szw = szw
+              rawEdit.szh = szh
+              changeInputValue('id-input-raw-szw', szw)
+              changeInputValue('id-input-raw-szh', szh)
+            }
+
             if (rawEdit.transRawInfo) {
               rawEdit.transRawInfo = expandRawSimple(rawEdit.transRawInfo, rawEdit.expandInfo.sn)
             } else {
@@ -406,12 +415,12 @@
       let szw = rawEdit.szw
       let szh = rawEdit.szh
       if (rawEdit.transRawInfo) {
-        if (rawEdit.expandInfo.sn > 1) {
-          if (rawEdit.expandInfo.isFit) {
-            szw = rawEdit.szw / rawEdit.expandInfo.sn
-            szh = rawEdit.szh / rawEdit.expandInfo.sn
-          }
-        }
+        // if (rawEdit.expandInfo.sn > 1) {
+        //   if (rawEdit.expandInfo.isFit) {
+        //     szw = rawEdit.szw / rawEdit.expandInfo.sn
+        //     szh = rawEdit.szh / rawEdit.expandInfo.sn
+        //   }
+        // }
         drawArea(ctx, rawEdit.transRawInfo.column * szw, rawEdit.transRawInfo.row * szh, sx, sy, 'lightgray')
         drawRawSimple(ctx, rawEdit.transRawInfo, rawEdit.x, rawEdit.y, szw, szh)
       } else {
