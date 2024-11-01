@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>place raw edit p line transform</title>
+  <style>
+    .menu-left {
+      height: 100%;
+      width: 30%;
+      position: fixed;
+      z-index: 1;
+      overflow-x: hidden;
+    }
+    .main {
+      height: 100%;
+      width: calc(100% - 30% - 8px - 16px - 400px);
+      position: fixed;
+      z-index: 1;
+      overflow-x: hidden;
+      left: calc(30%);
+    }
+    .menu-right {
+      width: 400px;
+      height: 100%;
+      /*background-color: lightgray;*/
+      position: fixed;
+      right: 0;
+      /*top: 0;*/
+      z-index: 1;
+    }
+  </style>
+</head>
+<body onload="init()">
+  <div class="menu-left" id="id-menu-left">
+  </div>
+  <div class="main" id="id-main">
+  </div>
+  <div class="menu-right" id="id-menu-right"></div>
+
+  <script type="text/javascript" src="fnc/fnc-outline.js"></script>
+  <script type="text/javascript" src="fnc/fnc-outline-edge.js"></script>
+  <script type="text/javascript" src="fnc/fnc-outline-point.js"></script>
+  <script type="text/javascript" src="fnc/fnc-outline-edit-p-set.js"></script>
+  <script type="text/javascript" src="fnc/fnc-save.js"></script>
+  <script type="text/javascript" src="fnc/fnc-line-info.js"></script>
+  <script type="text/javascript" src="fnc/fnc-line-edit-info.js"></script>
+  <script type="text/javascript" src="fnc/fnc-transform-line-info.js"></script>
+  <script type="text/javascript" src="fnc/fnc-merge-line-info.js"></script>
+  <script type="text/javascript" src="fnc/fnc-draw.js"></script>
+  <script type="text/javascript" src="fnc/fnc-divide-line.js"></script>
+  <script type="text/javascript" src="fnc/fnc-transform-line-info.js"></script>
+  <script type="text/javascript" src="fnc/fnc-raw-info.js"></script>
+  <script type="text/javascript" src="fnc/fnc-transform-raw.js"></script>
+  <script type="text/javascript" src="fnc/fnc-raw-mtx.js"></script>
+  <script type="text/javascript" src="cmp/cmp-btn.js"></script>
+  <script type="text/javascript" src="cmp/cmp-canvas.js"></script>
+  <script type="text/javascript" src="cmp/cmp-common.js"></script>
+  <script type="text/javascript" src="cmp/cmp-input.js"></script>
+  <script type="text/javascript" src="cmp/cmp-raw-drawer.js"></script>
+  <script type="text/javascript" src="cmp/cmp-select.js"></script>
+  <script type="text/javascript" src="view/raw-place-edit-p/edt-current-place-info.js"></script>
+  <script type="text/javascript" src="view/raw-place-edit-p/edt-p-set-edit.js"></script>
+  <script type="text/javascript" src="view/raw-place-edit-p/edt-place-edit-p-ucode.js"></script>
+  <script type="text/javascript" src="view/raw-transform/edt-raw-place.js"></script>
+  <script type="text/javascript" src="view/raw-transform/edt-raw-expand.js"></script>
+  <script type="text/javascript" src="view/raw-transform/edt-raw-add-column.js"></script>
+  <script type="text/javascript" src="view/raw-transform/edt-raw-add-row.js"></script>
+  <script type="text/javascript" src="view/raw-transform/edt-raw-rotate-i.js"></script>
+  <script type="text/javascript" src="view/raw-transform/edt-raw-target-add-remove.js"></script>
+  <script type="text/javascript" src="view/line-transform/edt-line-start-pos.js"></script>
+  <script type="text/javascript" src="view/line-transform/edt-line-transform.js"></script>
+  <script type="text/javascript" src="view/line-transform/edt-line-p4.js"></script>
+  <script>
+    let eInfo = {
+      placeEditPSetList: [],
+      saveMode: 'new', // update (override) / new
+      placeList: [],
+      rawSetList: [],
+      editPSetInfoList: [],
+      crntI: -1,
+      sx: 0,
+      sy: 0,
+      szw: 20,
+      szh: 20,
+      color: 'white',
+      lineColor: 'black',
+      lineWidth: 1,
+      editType: 'none',
+      editTypeList: ['none', 'add-p', 'remove-p', 'slice', 'curve'],
+      editRawList: [],
+      lineEditInfo: {
+        sx: 0,
+        sy: 0,
+        list: []
+      },
+      editInfoList: []
+    }
+
+    let rawEdit = {
+      x: 10,
+      y: 10,
+      szw: 20,
+      szh: 20,
+      rawInfo: null,
+      transRawInfo: null,
+      expandInfo: {
+        isFit: true,
+        sn: 1
+      },
+      addColumnInfo: {
+        add: 0,
+        target: 0
+      },
+      addRowInfo: {
+        add: 0,
+        target: 0
+      },
+      rotateIInfo: {
+        i: 0
+      },
+      keyInfoMap: null
+    }
+
+    let currentPlaceEdt
+    let placeRaw
+    let placeUCodeEdt
+
+    // eInfo.lineEditInfo
+    //
+    // lineEditInfo = {
+    //   sx: 0, sy: 0,
+    //   list: [] // editInfo list
+    // }
+
+    // let editInfo = {
+    //   uCode: `line-edit-${getCurrentDateUCode()}`,
+    //   lineInfo: null,
+    //   transLine: null,
+    //   scaleInfo: {
+    //     scaleX: 1,
+    //     scaleY: 1
+    //   },
+    //   rotateInfo: {
+    //     degree: 0
+    //   },
+    //   sftRIInfo: {
+    //     i: 0,
+    //     list: [0,1,2,3,4,5,6,7]
+    //   },
+    //   p4Info: {
+    //     isOn: false,
+    //     lt: {
+    //       x: 0,
+    //       y: 0
+    //     },
+    //     rt: {
+    //       x: 100,
+    //       y: 0
+    //     },
+    //     lb: {
+    //       x: 0,
+    //       y: 100
+    //     },
+    //     rb: {
+    //       x: 100,
+    //       y: 100
+    //     }
+    //   }
+    // }
+    //
+    // let isDrawingP4 = false
+
+    let edtLineTransform
+    let edtLineP4
+
+    function init() {
+      loadRawSetList()
+    }
+
+    function loadRawSetList() {
+      const request = new Request('/str-set/raw-set-list')
+      fetch(request).then((response) => response.json()).then((json) => {
+        console.log(json)
+        if (json.code === 'list') {
+          for (const str of json.list) {
+            eInfo.rawSetList.push(str)
+          }
+          loadEditSetList()
+        }
+      })
+    }
+
+    function loadEditSetList() {
+      const request = new Request('/str-set/edit-p-set-list')
+      fetch(request).then((response) => response.json()).then((json) => {
+        console.log(json)
+        if (json.code === 'list') {
+          let i = 0
+          for (const pSet of json.list) {
+            eInfo.editPSetInfoList.push(createEditPSetInfo(pSet))
+            const split = pSet.split('/')
+            if (split.length > 12) {
+              let st = `${split[12]}`
+              for (let i=13; i<split.length; i++) st += `/${split[i]}`
+              eInfo.editInfoList.push({
+                pSetI: i,
+                editInfo: createLineEditInfoFromPSet(st)
+              })
+            }
+            i++
+          }
+
+          loadPlaceEditSetList()
+        }
+      })
+    }
+
+    function loadPlaceEditSetList() {
+      const request = new Request('/str-set/place-edit-p-set-list')
+      fetch(request).then((response) => response.json()).then((json) => {
+        console.log(json)
+        if (json.code === 'list') {
+          for (const str of json.list) {
+            eInfo.placeEditPSetList.push(str)
+          }
+          makeMenuLeft()
+          makeMenuRight()
+        }
+      })
+    }
+
+    function makeMenuLeft() {
+      const main = document.getElementById('id-main')
+      const menuLeft = document.getElementById('id-menu-left')
+      makeEditPSet(main, menuLeft)
+      makeEditRaw(main, menuLeft)
+    }
+
+    function makeEditPSet(main, menu) {
+      placeUCodeEdt = createEdtPlaceEditPUCode(menu, (placeInfo, code) => { // onAdd
+        const set = eInfo.rawSetList.find(s => s.split('/')[0] === placeInfo.pSetInfo.rawUCode)
+        rawEdit.rawInfo = createRawInfo(set)
+        rawEdit.transRawInfo = null
+        placeRaw.draw()
+
+        if (code === 'add') {
+          eInfo.lineEditInfo.list.push({
+              uCode: `line-edit-${getCurrentDateUCode()}`,
+              lineInfo: placeInfo.lineInfo,
+              transLine: null,
+              scaleInfo: {
+                scaleX: 1,
+                scaleY: 1
+              },
+              rotateInfo: {
+                degree: 0
+              },
+              sftRIInfo: {
+                i: 0
+              },
+              p4Info: {
+                isOn: false,
+                lt: {
+                  x: 0,
+                  y: 0
+                },
+                rt: {
+                  x: 100,
+                  y: 0
+                },
+                lb: {
+                  x: 0,
+                  y: 100
+                },
+                rb: {
+                  x: 100,
+                  y: 100
+                }
+              }
+            })
+          edtLineP4.calculateP4()
+          edtLineTransform.draw()
+        }
+        if (code === 'load') {
+          console.log(eInfo.editInfoList)
+          for (const place of eInfo.placeList) {
+            console.log(place)
+            const edInfo = eInfo.editInfoList.find(e => e.pSetI === eInfo.editPSetInfoList.indexOf(place.pSetInfo))
+            console.log(edInfo)
+            const editInfo = edInfo.editInfo
+            eInfo.lineEditInfo.list.push(editInfo)
+            editInfo.lineInfo = place.lineInfo
+            editByOrder(editInfo)
+          }
+          edtLineP4.updateP4Edit()
+          edtLineTransform.draw()
+          currentPlaceEdt.draw()
+        }
+      })
+      currentPlaceEdt = createEdtCurrentPlaceInfo(menu, (placeInfo, code) => { // onChange
+        const set = eInfo.rawSetList.find(s => s.split('/')[0] === placeInfo.pSetInfo.rawUCode)
+        rawEdit.rawInfo = createRawInfo(set)
+        rawEdit.transRawInfo = null
+        placeRaw.draw()
+
+        edtLineTransform.update()
+        edtLineP4.updateP4Edit()
+        edtLineP4.draw()
+
+        if (code === 'next') {
+
+        }
+        if (code === 'prev') {
+
+        }
+        if (code === 'remove') {
+
+        }
+      })
+      const pSetEdt = createEdtPSetEdit(menu, () => { // onChange
+        const placeInfo = eInfo.placeList[eInfo.crntI]
+        const editInfo = eInfo.lineEditInfo.list[eInfo.crntI]
+        editInfo.lineInfo = placeInfo.lineInfo
+        editByOrder(editInfo)
+        currentPlaceEdt.draw()
+        edtLineTransform.draw()
+      })
+      placeUCodeEdt.info = eInfo
+      currentPlaceEdt.info = eInfo
+      pSetEdt.info = eInfo
+      pSetEdt.initEditTypeSelect()
+      const currentPlaceUpdateCrnt = currentPlaceEdt.updateCrnt
+      const pSetUpdateCrnt = pSetEdt.updateCrnt
+      const updateCrnt = () => {
+        currentPlaceUpdateCrnt()
+        pSetUpdateCrnt()
+        currentPlaceEdt.draw()
+      }
+      placeUCodeEdt.save = save
+      placeUCodeEdt.saveToLine = saveToLine
+      placeUCodeEdt.updateCrnt = updateCrnt
+      currentPlaceEdt.updateCrnt = updateCrnt
+      pSetEdt.updateCrnt = updateCrnt
+
+      const borderDiv = createBorderDiv()
+      const lineCanvas = createCanvas('id-canvas-line')
+      lineCanvas.canvas.width = main.offsetWidth - 20 - 3
+      lineCanvas.canvas.height = 500
+      // lineCanvas.canvas.style.backgroundColor = 'LightSkyBlue'
+      const lineDraw = () => {
+        lineCanvas.ctx.clearRect(0, 0, lineCanvas.canvas.width, lineCanvas.canvas.height)
+        // for (const placeInfo of eInfo.placeList) {
+        //   drawLineInfo(lineCanvas.ctx, placeInfo.lineInfo, eInfo.sx, eInfo.sx)
+        // }
+        for (let i=0; i<eInfo.placeList.length; i++) {
+          const placeInfo = eInfo.placeList[i]
+          if (i >= eInfo.lineEditInfo.list.length) {
+            drawLineInfo(lineCanvas.ctx, placeInfo.lineInfo, eInfo.sx, eInfo.sx)
+            continue
+          }
+          const editInfo = eInfo.lineEditInfo.list[i]
+          let rLine
+          if (editInfo.transLine) {
+            rLine = structuredClone(editInfo.transLine)
+            rLine.x = placeInfo.lineInfo.x
+            rLine.y = placeInfo.lineInfo.y
+            // drawLineInfo(lineCanvas.ctx, editInfo.transLine, eInfo.sx, eInfo.sy)
+
+          } else {
+            // drawLineInfo(lineCanvas.ctx, placeInfo.lineInfo, eInfo.sx, eInfo.sy)
+            rLine = placeInfo.lineInfo
+          }
+          if (editInfo.p4Info.isOn) {
+            const pLine = createLinePointFromLineInfo(rLine)
+            rLine = transformPoints4V1(pLine, editInfo.p4Info)
+          }
+          drawLineInfo(lineCanvas.ctx, rLine, eInfo.sx, eInfo.sy)
+        }
+      }
+      currentPlaceEdt.draw = lineDraw
+      pSetEdt.draw = lineDraw
+
+      borderDiv.appendChild(lineCanvas.canvas)
+      main.appendChild(borderDiv)
+    }
+
+    function makeEditRaw(main, menu) {
+      placeRaw = createEdtRawPlace(menu, () => { // onEdit
+        updateEditRawList()
+        currentPlaceEdt.updateCrnt()
+        const placeInfo = eInfo.placeList[eInfo.crntI]
+        const editInfo = eInfo.lineEditInfo.list[eInfo.crntI]
+        editInfo.lineInfo = placeInfo.lineInfo
+        editByOrder(editInfo)
+        currentPlaceEdt.draw()
+        edtLineTransform.draw()
+      })
+      const borderDiv = createBorderDiv()
+      const rawCanvas = createCanvas('id-canvas-raw')
+      rawCanvas.canvas.width = main.offsetWidth - 20 - 3
+      rawCanvas.canvas.height = 500
+      placeRaw.rawEdit = rawEdit
+
+      const rawDraw = () => {
+        rawCanvas.ctx.clearRect(0, 0, rawCanvas.canvas.width, rawCanvas.canvas.height)
+        if (!rawEdit.rawInfo) return
+
+        const ctx = rawCanvas.ctx
+        const sx = placeRaw.info.sx
+        const sy = placeRaw.info.sy
+        let szw = rawEdit.szw
+        let szh = rawEdit.szh
+        if (rawEdit.transRawInfo) {
+          // if (rawEdit.expandInfo.sn > 1) {
+          //   if (rawEdit.expandInfo.isFit) {
+          //     szw = rawEdit.szw / rawEdit.expandInfo.sn
+          //     szh = rawEdit.szh / rawEdit.expandInfo.sn
+          //   }
+          // }
+          drawArea(ctx, rawEdit.transRawInfo.column * szw, rawEdit.transRawInfo.row * szh, sx, sy, 'lightgray')
+          drawRawSimple(ctx, rawEdit.transRawInfo, sx, sy, szw, szh)
+        } else {
+          drawArea(ctx, rawEdit.rawInfo.column * szw, rawEdit.rawInfo.row * szh, sx, sy, 'lightgray')
+          drawRawSimple(ctx, rawEdit.rawInfo, sx, sy, szw, szh)
+        }
+
+        const kEditor = placeRaw.info.kEditor
+        if (placeRaw.info.isKeyboardEditing && kEditor.c >= 0 && kEditor.r >= 0) {
+          const x = kEditor.c * szw + sx + szw * 0.5
+          const y = kEditor.r * szh + sy + szh * 0.5
+          drawCircle(ctx, x, y, kEditor.radius, kEditor.color)
+        }
+      }
+      placeRaw.draw = rawDraw
+
+      placeRaw.addKeyDown()
+      placeRaw.addMouseDown(rawCanvas.canvas)
+
+      borderDiv.appendChild(rawCanvas.canvas)
+      // main.prepend(borderDiv)
+      main.appendChild(borderDiv)
+
+      const expandRaw = createEdtRawExpand(menu, () => { // onExpand
+        if (rawEdit.expandInfo.sn > 1) {
+          if (rawEdit.expandInfo.isFit) {
+            const szw = rawEdit.szw / rawEdit.expandInfo.sn
+            const szh = rawEdit.szh / rawEdit.expandInfo.sn
+            rawEdit.szw = szw
+            rawEdit.szh = szh
+            const placeInfo = eInfo.placeList[eInfo.crntI]
+            placeInfo.pSetInfo.szw = szw
+            placeInfo.pSetInfo.szh = szh
+            currentPlaceEdt.updateCrnt()
+            placeRaw.updateSzWY()
+            placeRaw.updateRawSizeTxt()
+            placeRaw.updateMtxInfo()
+            placeRaw.updateKeyInfoMap()
+            // placeRaw.draw()
+          }
+        }
+        updateEditRawList()
+        currentPlaceEdt.updateCrnt()
+      })
+      expandRaw.rawEdit = rawEdit
+      expandRaw.draw = rawDraw
+      expandRaw.updateKeyInfoMap = placeRaw.updateKeyInfoMap
+
+      const addColumnRaw = createEdtRawAddColumn(menu, () => { // onAdd
+        updateEditRawList()
+        currentPlaceEdt.updateCrnt()
+      })
+      addColumnRaw.rawEdit = rawEdit
+      addColumnRaw.draw = rawDraw
+      addColumnRaw.updateKeyInfoMap = placeRaw.updateKeyInfoMap
+
+      const addRowRaw = createEdtRawAddRow(menu, () => { // onAdd
+        updateEditRawList()
+        currentPlaceEdt.updateCrnt()
+      })
+      addRowRaw.rawEdit = rawEdit
+      addRowRaw.draw = rawDraw
+      addRowRaw.updateKeyInfoMap = placeRaw.updateKeyInfoMap
+
+      const rotateIRaw = createEdtRawRotateI(menu, () => { // onRotate
+        updateEditRawList()
+        currentPlaceEdt.updateCrnt()
+      })
+      rotateIRaw.rawEdit = rawEdit
+      rotateIRaw.draw = rawDraw
+      rotateIRaw.updateKeyInfoMap = placeRaw.updateKeyInfoMap
+
+      const targetEdtRaw = createEdtRawTargetAddRemove(menu, () => { // onEdit
+        updateEditRawList()
+        currentPlaceEdt.updateCrnt()
+      })
+      targetEdtRaw.rawEdit = rawEdit
+      targetEdtRaw.draw = rawDraw
+      targetEdtRaw.updateKeyInfoMap = placeRaw.updateKeyInfoMap
+    }
+
+    function updateEditRawList() {
+      if (!rawEdit.transRawInfo) return
+      const placeInfo = eInfo.placeList[eInfo.crntI]
+      makeLineByRawInfo(placeInfo, rawEdit.transRawInfo)
+      currentPlaceEdt.draw()
+
+      let info = eInfo.editRawList.find(e => e.i === eInfo.crntI)
+      if (!info) {
+        info = { i: eInfo.crntI, rawInfo: null }
+        eInfo.editRawList.push(info)
+      }
+      info.rawInfo = rawEdit.transRawInfo
+      const rawSet = createRawStrSet(info.rawInfo)
+      const index = eInfo.rawSetList.findIndex(s => s.split('/')[0] === info.rawInfo.uCode)
+      if (index < 0) {
+        eInfo.rawSetList.push(rawSet)
+      } else {
+        eInfo.rawSetList[index] = rawSet
+      }
+    }
+
+    function makeMenuRight() {
+      const main = document.getElementById('id-main')
+      const menuRight = document.getElementById('id-menu-right')
+      const edtLineStartPos = createEdtLineStartPos(menuRight)
+      edtLineTransform = createEdtLineTransform(menuRight, () => { // onChange
+        currentPlaceEdt.draw()
+      })
+      edtLineP4 = createEdtLineP4(menuRight, () => { // onChange
+        currentPlaceEdt.draw()
+      })
+      edtLineStartPos.eInfo = eInfo
+      edtLineTransform.eInfo = eInfo
+      edtLineP4.eInfo = eInfo
+
+      const borderDiv = createBorderDiv()
+      const lineTransCanvas = createCanvas('id-canvas-line-trans')
+      lineTransCanvas.canvas.width = main.offsetWidth - 20 - 3
+      lineTransCanvas.canvas.height = 500
+      borderDiv.appendChild(lineTransCanvas.canvas)
+
+      const draw = () => {
+        const sx = eInfo.lineEditInfo.sx
+        const sy = eInfo.lineEditInfo.sy
+        const editInfo = eInfo.lineEditInfo.list[eInfo.crntI]
+        const canvas = lineTransCanvas.canvas
+        const ctx = lineTransCanvas.ctx
+        ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+        let drawingLine = editInfo.lineInfo
+        if (editInfo.transLine) drawingLine = editInfo.transLine
+
+        if (!drawingLine) return
+        const drwLine = structuredClone(drawingLine)
+        drwLine.x = 0
+        drwLine.y = 0
+        if (editInfo.p4Info.isOn) {
+          const pLine = createLinePointFromLineInfo(drwLine)
+          const line = transformPoints4V1(pLine, editInfo.p4Info)
+          drawLineInfo(ctx, line, sx, sy)
+        } else {
+          drawLineInfo(ctx, drwLine, sx, sy)
+        }
+
+        if (edtLineP4.isDrawingP4) {
+          const ltX = editInfo.p4Info.lt.x + sx
+          const ltY = editInfo.p4Info.lt.y + sy
+          const rtX = editInfo.p4Info.rt.x + sx
+          const rtY = editInfo.p4Info.rt.y + sy
+          const lbX = editInfo.p4Info.lb.x + sx
+          const lbY = editInfo.p4Info.lb.y + sy
+          const rbX = editInfo.p4Info.rb.x + sx
+          const rbY = editInfo.p4Info.rb.y + sy
+          ctx.beginPath()
+          ctx.lineWidth = 1
+          ctx.strokeStyle = 'red'
+          ctx.moveTo(ltX, ltY)
+          ctx.lineTo(rtX, rtY)
+          ctx.lineTo(rbX, rbY)
+          ctx.lineTo(lbX, lbY)
+          ctx.lineTo(ltX, ltY)
+          ctx.stroke()
+        }
+      }
+
+      edtLineStartPos.draw = draw
+      edtLineTransform.draw = draw
+      edtLineP4.draw = draw
+
+      main.appendChild(borderDiv)
+    }
+
+    function save() {
+      const uCode = `place-edit-p-set-${getCurrentDateUCode()}`
+      const info = {
+        uCode: uCode,
+        list: eInfo.placeList
+      }
+      fitPlaceInfo(info)
+      eInfo.placeList = info.list
+      const str = createEditPPlaceStrSet(info)
+      console.log(str)
+      saveString(uCode, str)
+      postStrSet({
+        uCode: uCode,
+        str: str,
+        type: 'place-edit-p-set',
+        dsg: '',
+        memo0: '',
+        memo1: '',
+        memo2: '',
+      }, placeUCodeEdt.getTxtDivResultId())
+      let i = 0
+      for (const p of eInfo.placeList) {
+        const editInfo = eInfo.lineEditInfo.list[i]
+        let pSetStr = createEditPStrSet(p.pSetInfo)
+        if (editInfo.transLine || editInfo.p4Info.isOn) {
+          const edStr = createLineEditStrSetNoUCode(editInfo, editInfo.p4Info.isOn)
+          pSetStr += edStr
+        }
+        console.log(pSetStr)
+        saveString(p.pSetInfo.uCode, pSetStr)
+        postStrSet({
+          uCode: p.pSetInfo.uCode,
+          str: pSetStr,
+          type: 'edit-p-set',
+          dsg: '',
+          memo0: 'place-raw-edit-p-line-transform',
+          memo1: '',
+          memo2: '',
+        }, placeUCodeEdt.getTxtDivResultId())
+        i++
+      }
+
+      for (const raw of eInfo.editRawList) {
+        if (raw.rawInfo) {
+          const rawSet = createRawStrSet(raw.rawInfo)
+          saveString(raw.rawInfo.uCode, rawSet)
+          postStrSet({
+            uCode: raw.rawInfo.uCode,
+            str: rawSet,
+            type: 'raw-set',
+            dsg: '',
+            memo0: 'place-raw-edit-p-line-transform',
+            memo1: '',
+            memo2: '',
+          }, placeUCodeEdt.getTxtDivResultId())
+        }
+      }
+    }
+
+    function saveToLine() {
+      const uCode = `place-edit-p-set-${getCurrentDateUCode()}`
+      const info = {
+        uCode: uCode,
+        list: eInfo.placeList
+      }
+      fitPlaceInfo(info)
+      eInfo.placeList = info.list
+      const lineList = []
+      console.log(eInfo.placeList)
+      let i = 0
+      for (const p of eInfo.placeList) {
+        const editInfo = eInfo.lineEditInfo.list[i]
+        makeLine(p, eInfo.rawSetList)
+        if (p.lineInfo) {
+          editInfo.lineInfo = p.lineInfo
+          editByOrder(editInfo)
+          let rLine
+          if (editInfo.transLine) {
+            // lineList.push(editInfo.transLine)
+            rLine = editInfo.transLine
+            rLine.x = editInfo.lineInfo.x
+            rLine.y = editInfo.lineInfo.y
+          } else {
+            // lineList.push(p.lineInfo)
+            rLine = p.lineInfo
+          }
+          if (editInfo.p4Info.isOn) {
+            const pLine = createLinePointFromLineInfo(rLine)
+            rLine = transformPoints4V1(pLine, editInfo.p4Info)
+          }
+          lineList.push(rLine)
+        }
+        i++
+      }
+      const mgLine = mergeSpLineInfo(`line-${getCurrentDateUCode()}`, lineList)
+      const mgLineSet = createSimpleLineStrSet(mgLine)
+      saveString(mgLine.uCode, mgLineSet)
+
+      postStrSet({
+        uCode: mgLine.uCode,
+        str: mgLineSet,
+        type: 'line',
+        dsg: '',
+        memo0: 'place-raw-edit-p-line-transform',
+        memo1: '',
+        memo2: '',
+      }, placeUCodeEdt.getTxtDivResultId())
+    }
+
+    function postStrSet(obj, labelId) {
+      const request = new Request('/str-set/add-str', {
+        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', body: JSON.stringify(obj)
+      })
+      fetch(request).then(response => {
+        return response.json()
+      }).then(result => {
+        console.log(result)
+        const str = `${obj.type}: ${result.code}`
+        const label = document.getElementById(id)
+        let txt = label.innerText
+        label.innerText = `${txt}, ${str}`
+      })
+    }
+  </script>
+</body>
+</html>
