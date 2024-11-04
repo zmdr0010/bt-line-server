@@ -32,6 +32,13 @@ function createContainer() {
   }
 }
 
+function createLineDiv(h=1, color='black') {
+  const div = document.createElement('div')
+  div.style.height = `${h}px`
+  div.style.backgroundColor = color
+  return div
+}
+
 function setDisabled(id, disabled) {
   const elm = document.getElementById(id)
   elm.disabled = disabled

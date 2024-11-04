@@ -19,6 +19,30 @@ function makeInputTextBtn(id, container, labelTxt, btnName, onClick) {
   container.appendChild(div)
 }
 
+// list: [ { btnName: '', onClick: () => {} } ]
+function makeInputTextBtnList(id, container, labelTxt, list) {
+  const div = createSubDiv()
+  const input = document.createElement('input')
+  input.type = 'text'
+  input.id = id
+  input.style.margin = '2px'
+  const clearBtn = document.createElement('button')
+  clearBtn.style.margin = '2px'
+  clearBtn.innerText = 'X'
+  clearBtn.onclick = () => clearInput(id)
+  div.innerText = `${labelTxt}`
+  div.appendChild(input)
+  div.appendChild(clearBtn)
+  container.appendChild(div)
+  for (const info of list) {
+    const actBtn = document.createElement('button')
+    actBtn.style.margin = '2px'
+    actBtn.innerText = info.btnName
+    actBtn.onclick = info.onClick
+    div.appendChild(actBtn)
+  }
+}
+
 function makeInputNumBtn(id, container, labelTxt, btnName, onClick, value, step='1') {
   const div = createSubDiv()
   const input = document.createElement('input')
