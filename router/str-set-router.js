@@ -171,4 +171,11 @@ router.get('/line-edit-list', (req, res) => {
   })
 })
 
+router.put('/str-set', (req, res) => {
+  console.log(req.body)
+  strSetManager.updateStrSet(req.body, (result) => {
+    res.json(result)
+  })
+})
+
 exports.router = router

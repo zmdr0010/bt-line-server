@@ -12,6 +12,7 @@ let dbPath = ''
 //       raw-set, place-raw-set, edit-p-set, place-edit-p-set
 //       color-set, color-palette
 //       line-edit
+//       dvc-set, upg-set
 
 //// making-line-point / coloring-line-point
 ////    line-point, coloring(1, black) (memo0: line-point) -> line (memo0: line-point,line-point uCode) <- record origin
@@ -382,3 +383,86 @@ function getStrListByGroup(groupId, callback) {
   db.close()
 }
 exports.getStrListByGroup = getStrListByGroup
+
+// update all/each
+//
+// ucode TEXT NOT NULL UNIQUE,
+// str TEXT NOT NULL,
+// dsg TEXT,
+// type TEXT,
+// memo0 TEXT,
+// memo1 TEXT,
+// memo2 TEXT,
+function updateStrSet(body, callback) {
+  const info = {
+    params: [body.uCode],
+    where: 'ucode = ?',
+    set: ''
+  }
+  let isFirst = true
+  if (body.str) {
+    info.params.unshift(body.str)
+    if (isFirst) {
+      info.set = 'str = ?'
+      isFirst = false
+    } else {
+      info.set = `str = ?,${info.set}`
+    }
+  }
+  if (body.dsg) {
+    info.params.unshift(body.dsg)
+    if (isFirst) {
+      info.set = 'dsg = ?'
+      isFirst = false
+    } else {
+      info.set = `dsg = ?,${info.set}`
+    }
+  }
+  if (body.type) {
+    info.params.unshift(body.type)
+    if (isFirst) {
+      info.set = 'type = ?'
+      isFirst = false
+    } else {
+      info.set = `type = ?,${info.set}`
+    }
+  }
+  if (body.memo0) {
+    info.params.unshift(body.memo0)
+    if (isFirst) {
+      info.set = 'memo0 = ?'
+      isFirst = false
+    } else {
+      info.set = `memo0 = ?,${info.set}`
+    }
+  }
+  if (body.memo1) {
+    info.params.unshift(body.memo1)
+    if (isFirst) {
+      info.set = 'memo1 = ?'
+      isFirst = false
+    } else {
+      info.set = `memo1 = ?,${info.set}`
+    }
+  }
+  if (body.memo2) {
+    info.params.unshift(body.memo2)
+    if (isFirst) {
+      info.set = 'memo2 = ?'
+      isFirst = false
+    } else {
+      info.set = `memo2 = ?,${info.set}`
+    }
+  }
+  const db = openDb()
+  const sql = `UPDATE strs SET ${info.set} WHERE ${info.where}`
+  db.run(sql, info.params, (err) => {
+    if (err) {
+      if (callback) callback({ code: 'error', msg: err.message })
+      return
+    }
+    if (callback) callback({ code: 'updated' })
+  })
+  db.close()
+}
+exports.updateStrSet = updateStrSet
